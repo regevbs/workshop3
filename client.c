@@ -2,6 +2,7 @@
 #include <infiniband/verbs.h>
 #include <linux/types.h>
 //#include "config.h"
+#include <assert.h>
 
 #include <stdio.h>
 #include <stdlib.h>
