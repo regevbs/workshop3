@@ -202,6 +202,8 @@ enum ibv_mtu pp_mtu_to_enum(int mtu)
     }
 }
 
+void kv_release(char *value);
+
 uint16_t pp_get_local_lid(struct ibv_context *context, int port)
 {
     struct ibv_port_attr attr;
@@ -1286,14 +1288,15 @@ int main(int argc, char **argv)
 
     g_argc = argc;
     g_argv = argv;
+    printf("1\n");
     if (argc > 1) {
         run_server();
     }
-    
+    printf("2\n");
     struct kv_handle * handle;
     handle->ctx = kv_ctx;
     handle->entryLen = 0;
-
+    printf("3\n");
 #ifdef EX4
     assert(0 == my_open(servers, indexer, &kv_ctx));
 #else
