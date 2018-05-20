@@ -710,6 +710,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
         printf("pass 2\n");
 		do {
 			ne = ibv_poll_cq(pp_cq(ctx), 2, wc);
+            printf("server:%d\n",ne);
 			if (ne < 0) {
 				fprintf(stderr, "poll CQ failed %d\n", ne);
 				return 1;
