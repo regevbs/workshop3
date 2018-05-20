@@ -1250,15 +1250,16 @@ void recursive_fill_kv(char const* dirname, void *dkv_h) {
 
 void run_server()
 {   
-    struct kv_handle * server_handle;
+    struct kv_handle * server_handle = malloc(sizeof(struct kv_handle));
    
-    struct pingpong_context *ctx;
+    struct pingpong_context *ctx = malloc(sizeof(struct pingpong_context));
     server_handle->ctx = ctx;
     server_handle->entryLen = 0;
     struct kv_server_address server = {0};
     assert(0 == orig_main(&server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &server_handle->ctx));
     while (0 <= pp_wait_completions(server_handle, 1));//TODO will this ever exit?
     pp_close_ctx(ctx);
+    free(server_handle);
 }
 
 int main(int argc, char **argv)
@@ -1292,17 +1293,18 @@ int main(int argc, char **argv)
     if (argc > 1) {
         run_server();
     }
-    printf("2\n");
-    struct kv_handle * handle;
+  
+    struct kv_handle * handle = malloc(sizeof(struct kv_handle));
     handle->ctx = kv_ctx;
     handle->entryLen = 0;
-    printf("3\n");
+    printf("2\n");
+    
 #ifdef EX4
     assert(0 == my_open(servers, indexer, &kv_ctx));
 #else
     assert(0 == my_open(&servers[0], handle));
 #endif
-
+    printf("3\n");
     /* Test small size */
     assert(100 < MAX_TEST_SIZE);
     memset(send_buffer, 'a', 100);
@@ -1336,7 +1338,8 @@ int main(int argc, char **argv)
 #ifdef EX4
 	recursive_fill_kv(TEST_LOCATION, kv_ctx);
 #endif
-
+    
     my_close(handle);
+    free(handle);
     return 0;
 }
