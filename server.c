@@ -615,6 +615,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 	unsigned response_size = 0;
 	bool indexFound = false;
     int i=0;
+    printf("server got packet@@\n");
     switch (packet->type) {
 	/* Only handle packets relevant to the server here - client will handle inside get/set() calls */
     case EAGER_GET_REQUEST:/* TODO (10LOC): handle a short GET() on the server */
