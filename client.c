@@ -640,7 +640,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
         /* Eager protocol - exercise part 1 */
         set_packet->type = EAGER_SET_REQUEST;
-        printf("sending eager\n");
+        printf("sending eager.\n key = %s\n value = %s\n",key,value);
         set_packet->eager_set_request.keyLen = strlen(key);
         set_packet->eager_set_request.valueLen = strlen(value);
         memcpy(set_packet->eager_set_request.key_and_value,key,strlen(key));
