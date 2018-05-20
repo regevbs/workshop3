@@ -653,7 +653,7 @@ static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode,
 		wr.wr.rdma.remote_addr = (uintptr_t) remote_ptr;
 		wr.wr.rdma.rkey = remote_key;
 	}
-
+    //return ibv_post_send((*ctx).qp[qp_num], &wr, &bad_wr);
 	return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 

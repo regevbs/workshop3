@@ -27,6 +27,7 @@
 #define EAGER_PROTOCOL_LIMIT (1 << 12) /* 4KB limit */
 #define MAX_TEST_SIZE (10 * EAGER_PROTOCOL_LIMIT)
 #define TEST_LOCATION "~/www/"
+#define NUM_SOCKETS 1
 typedef int bool;
 #define true 1
 #define false 0
@@ -694,7 +695,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 		int ne, i;
 
 		do {
-			ne = ibv_poll_cq(ctx->cq, 2, wc);
+			ne = ibv_poll_cq(pp_cq(ctx), 2, wc);
 			if (ne < 0) {
 				fprintf(stderr, "poll CQ failed %d\n", ne);
 				return 1;
@@ -803,7 +804,7 @@ int main(int argc, char *argv[])
     }
     //Create the context for this connection
     //creates context on found device, registers memory of size.
-    context = pp_init_ctx(ib_dev, FINAL_MESSAGE_SIZE, rx_depth, ib_port, use_event); //use_event (decides if we wait blocking for completion)
+    context = pp_init_ctx(ib_dev, EAGER_PROTOCOL_LIMIT, rx_depth, ib_port, use_event); //use_event (decides if we wait blocking for completion)
     if (!context)
         return 1;
     

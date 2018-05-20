@@ -22,7 +22,7 @@
 #define EAGER_PROTOCOL_LIMIT (1 << 12) /* 4KB limit */
 #define MAX_TEST_SIZE (10 * EAGER_PROTOCOL_LIMIT)
 #define TEST_LOCATION "~/www/"
-
+#define NUM_SOCKETS 1
 typedef int bool;
 #define true 1
 #define false 0
@@ -528,8 +528,9 @@ static int pp_close_ctx(struct pingpong_context *ctx)
 	return 0;
 }
 
-static int pp_post_recv(struct pingpong_context *ctx, int n,int qp_num)
+static int pp_post_recv(struct pingpong_context *ctx, int n)
 {
+    int qp_num = 0;
 	struct ibv_sge list = {
 		.addr	= (uintptr_t) ctx->buf,
 		.length = ctx->size,
@@ -550,29 +551,29 @@ static int pp_post_recv(struct pingpong_context *ctx, int n,int qp_num)
 	return i;
 }
 
-static int pp_post_send(struct pingpong_context *ctx,int qp_num,int imm_data,int msgSize)
+static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode, unsigned size, const char *local_ptr, void *remote_ptr, uint32_t remote_key)
 {
-    int sizeToSend = ctx->size;
-    if(msgSize <= sizeToSend)
-    {
-        sizeToSend = msgSize;
-    }
 	struct ibv_sge list = {
-		.addr	= (uintptr_t) ctx->buf,
-		.length = sizeToSend,//ctx->size,
+		.addr	= (uintptr_t) (local_ptr ? local_ptr : ctx->buf),
+		.length = size,
 		.lkey	= ctx->mr->lkey
 	};
 	struct ibv_send_wr wr = {
 		.wr_id	    = PINGPONG_SEND_WRID,
 		.sg_list    = &list,
 		.num_sge    = 1,
-		.opcode     = IBV_WR_SEND_WITH_IMM,
-		.send_flags = ctx->send_flags,
-        .imm_data = htonl(imm_data),
+		.opcode     = opcode,
+		.send_flags = IBV_SEND_SIGNALED,
+		.next       = NULL
 	};
 	struct ibv_send_wr *bad_wr;
-
-	return ibv_post_send((*ctx).qp[qp_num], &wr, &bad_wr);
+	
+	if (remote_ptr) {
+		wr.wr.rdma.remote_addr = (uintptr_t) remote_ptr;
+		wr.wr.rdma.rkey = remote_key;
+	}
+    return ibv_post_send((*ctx).qp[qp_num], &wr, &bad_wr);
+	//return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
 ////////////////////
@@ -586,7 +587,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 		int ne, i;
 
 		do {
-			ne = ibv_poll_cq(ctx->cq, 2, wc);
+			ne = ibv_poll_cq(pp_cq(ctx), 2, wc);
 			if (ne < 0) {
 				fprintf(stderr, "poll CQ failed %d\n", ne);
 				return 1;
@@ -626,7 +627,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 
 int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 {
-    return orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
+    return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
 }
 
 int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
@@ -758,7 +759,7 @@ int main(int argc, char *argv[])
     }
     //Create the context for this connection
     //creates context on found device, registers memory of size.
-    context = pp_init_ctx(ib_dev, FINAL_MESSAGE_SIZE, rx_depth, ib_port, use_event); //use_event (decides if we wait blocking for completion)
+    context = pp_init_ctx(ib_dev, EAGER_PROTOCOL_LIMIT, rx_depth, ib_port, use_event); //use_event (decides if we wait blocking for completion)
     if (!context)
         return 1;
     
@@ -813,6 +814,8 @@ int main(int argc, char *argv[])
     //Do client work
     struct kv_handle * handle = malloc(sizeof(struct kv_handle));
     handle->ctx = context;
+    char send_buffer[MAX_TEST_SIZE] = {0};
+    char *recv_buffer;
     /* Test small size */
     assert(100 < MAX_TEST_SIZE);
     memset(send_buffer, 'a', 100);
