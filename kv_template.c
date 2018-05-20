@@ -677,13 +677,14 @@ static void usage(const char *argv0)
 void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 {
 	unsigned response_size = 0;
-	
+	bool indexFound = false;
+    int i=0;
     switch (packet->type) {
 	/* Only handle packets relevant to the server here - client will handle inside get/set() calls */
-    case EAGER_GET_REQUEST: ;/* TODO (10LOC): handle a short GET() on the server */
+    case EAGER_GET_REQUEST:/* TODO (10LOC): handle a short GET() on the server */
     //find the index of the value, get the value and send it back in a packet
-        bool indexFound = false;
-        int i;
+        indexFound = false;
+        //int i;
         printf("key recieved: %s\n",packet->eager_get_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
@@ -694,25 +695,25 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             }
         }
         //memset the buffer to 0
-        memset((handle->ctx)->buffer,0,(handle->ctx)->size); //TODO make sure buffer is not needed anymore
+        memset((handle->ctx)->buf,0,(handle->ctx)->size); //TODO make sure buffer is not needed anymore
         if(indexFound)
         {
             
             //memcpy the found data into the buffer
-            memcpy((handle->ctx)->buffer,(handle->values)[i],(handle->valueLen)[i]);
+            memcpy((handle->ctx)->buf,(handle->values)[i],(handle->valueLen)[i]);
             response_size = (handle->valueLen)[i];
         }
         else
         {
             char toSend[] = "";
-            memcpy((handle->ctx)->buffer,toSend[0],sizeof(char));// TODO make sure this is what we send
+            memcpy((handle->ctx)->buf,toSend[0],sizeof(char));// TODO make sure this is what we send
             response_size = sizeof(char);
         }
         break;
-    case EAGER_SET_REQUEST: ;/* TODO (10LOC): handle a short SET() on the server */
+    case EAGER_SET_REQUEST: /* TODO (10LOC): handle a short SET() on the server */
     //check if the key exists, if it does replace value, if it doesn't make a new entry
-        bool indexFound = false;
-        int i;
+        indexFound = false;
+        //int i;
         printf("set string: %s\n",packet->eager_set_request.key_and_value);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
@@ -732,10 +733,10 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         else
         {
-            (handle->keyLen)[i] = strlen(packet->eager_set_request.keyLen);
+            (handle->keyLen)[i] = packet->eager_set_request.keyLen;
             (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
-            (handle->valueLen)[i] = strlen(packet->eager_set_request.valueLen);
-            (handle->values)[i] = (char*) malloc(handle->valueLen)[i]);
+            (handle->valueLen)[i] = packet->eager_set_request.valueLen;
+            (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
             handle->entryLen = handle->entryLen + 1;
             memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
             memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
@@ -1290,13 +1291,13 @@ int main(int argc, char **argv)
     }
     
     struct kv_handle * handle;
-    handle->pingpong_context = kv_ctx;
+    handle->ctx = kv_ctx;
     handle->entryLen = 0;
 
 #ifdef EX4
     assert(0 == my_open(servers, indexer, &kv_ctx));
 #else
-    assert(0 == my_open(&servers[0], kv_handle));
+    assert(0 == my_open(&servers[0], handle));
 #endif
 
     /* Test small size */
