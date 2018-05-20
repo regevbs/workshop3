@@ -754,7 +754,7 @@ int main(int argc, char *argv[])
     
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
-	struct pingpong_context *context;
+	struct pingpong_context *context = (pingpong_context*) malloc(sizeof(struct pingpong_context));
 	struct pingpong_dest    my_dest[NUM_SOCKETS];
 	struct pingpong_dest    *rem_dest;
 	struct timeval           timer;
