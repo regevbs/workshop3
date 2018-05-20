@@ -714,6 +714,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 		} while (ne < 1);
 
 		for (i = 0; i < ne; ++i) {
+            printf("server is onto sumthin\n");
 			if (wc[i].status != IBV_WC_SUCCESS) {
 				fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",
 					ibv_wc_status_str(wc[i].status),

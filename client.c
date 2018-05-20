@@ -57,13 +57,13 @@ struct packet {
 
         struct {
             /* TODO */
-            unsigned key_len;
+            unsigned keyLen;
             char key[0]; //key will be an array of size len
             
         } eager_get_request;
 		
         struct {
-            unsigned value_length;
+            unsigned valueLen;
             char value[0];
         } eager_get_response;
 
@@ -578,7 +578,7 @@ static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode,
 }
 
 ////////////////////
-int pp_wait_completions(struct kv_handle *handle, int iters)
+int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer)
 {
     struct pingpong_context* ctx = handle->ctx;
     int rcnt, scnt, num_cq_events, use_event = 0;
@@ -612,7 +612,14 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 
 			case PINGPONG_RECV_WRID:
 				//handle_server_packets_only(handle, (struct packet*)&ctx->buf);
-				pp_post_recv(ctx, 1);
+				struct packet *gotten_packet = (struct packet*)ctx->buf;
+                if(gotten_packet->type == EAGER_GET_RESPONSE)
+                {
+                    *answerBuffer = malloc(gotten_packet->eager_get_response.valueLen * sizeof(char));
+                    memcpy(*answerBuffer,gotten_packet->eager_get_response.value,gotten_packet->eager_get_response.valueLen);
+                    printf("Answer buffer:\n %s\n",*answerBuffer);
+                }
+                pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
 				break;
 
@@ -651,7 +658,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
         printf("packet sent\n");
-        return pp_wait_completions(kv_handle, 1); /* await EAGER_SET_REQUEST completion */
+        return pp_wait_completions(kv_handle, 1,NULL); /* await EAGER_SET_REQUEST completion */
     }
 
     /* Otherwise, use RENDEZVOUS - exercise part 2 */
@@ -670,7 +677,38 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
 
 int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
 {
-    return 0; /* TODO (25LOC): similar to SET, only no n*/
+    struct pingpong_context *ctx = kv_handle->ctx;
+    struct packet *set_packet = (struct packet*)ctx->buf;
+
+    unsigned packet_size = strlen(key) + sizeof(struct packet);
+    if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
+        /* Eager protocol - exercise part 1 */
+        set_packet->type = EAGER_GET_REQUEST;
+        printf("sending eager get.\n key = %s\n",key);
+        set_packet->eager_get_request.keyLen = strlen(key);
+        
+        memcpy(set_packet->eager_get_request.key,key,strlen(key));
+ 
+        /* TODO (4LOC): fill in the rest of the get_packet */
+        printf("send %s\n",set_packet->eager_get_request.key);
+        printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
+        pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
+        printf("packet sent\n");
+        return pp_wait_completions(kv_handle, 2,value); /* await EAGER_GET_REQUEST completion, and EAGER_GET_RESPONSE answer */
+    }
+
+    /* Otherwise, use RENDEZVOUS - exercise part 2 */
+    set_packet->type = RENDEZVOUS_SET_REQUEST;
+    printf("randevo\n");
+    /* TODO (4LOC): fill in the rest of the set_packet - request peer address & remote key */
+
+    pp_post_recv(ctx, 1); /* Posts a receive-buffer for RENDEZVOUS_SET_RESPONSE */
+    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
+    assert(pp_wait_completions(kv_handle, 2,value)); /* wait for both to complete */
+
+    assert(set_packet->type == RENDEZVOUS_SET_RESPONSE);
+    pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, value, NULL, 0/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
+    return pp_wait_completions(kv_handle, 1,value); /* wait for both to complete */
 }
 
 void kv_release(char *value)
