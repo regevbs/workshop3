@@ -824,6 +824,7 @@ int main(int argc, char *argv[])
     assert(100 < MAX_TEST_SIZE);
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
+    printf("set success\n");
     assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
