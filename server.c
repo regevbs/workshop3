@@ -558,8 +558,9 @@ static int pp_close_ctx(struct pingpong_context *ctx)
 	return 0;
 }
 
-static int pp_post_recv(struct pingpong_context *ctx, int n,int qp_num)
+static int pp_post_recv(struct pingpong_context *ctx, int n)
 {
+    int qp_num = 0;
 	struct ibv_sge list = {
 		.addr	= (uintptr_t) ctx->buf,
 		.length = ctx->size,
@@ -580,24 +581,29 @@ static int pp_post_recv(struct pingpong_context *ctx, int n,int qp_num)
 	return i;
 }
 
-static int pp_post_send(struct pingpong_context *ctx,int qp_num,int imm_data)
+static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode, unsigned size, const char *local_ptr, void *remote_ptr, uint32_t remote_key)
 {
 	struct ibv_sge list = {
-		.addr	= (uintptr_t) ctx->buf,
-		.length = ctx->size,
+		.addr	= (uintptr_t) (local_ptr ? local_ptr : ctx->buf),
+		.length = size,
 		.lkey	= ctx->mr->lkey
 	};
 	struct ibv_send_wr wr = {
 		.wr_id	    = PINGPONG_SEND_WRID,
 		.sg_list    = &list,
 		.num_sge    = 1,
-		.opcode     = IBV_WR_SEND_WITH_IMM,
-		.send_flags = ctx->send_flags,
-        .imm_data = htonl(imm_data),
+		.opcode     = opcode,
+		.send_flags = IBV_SEND_SIGNALED,
+		.next       = NULL
 	};
 	struct ibv_send_wr *bad_wr;
-
-	return ibv_post_send((*ctx).qp[qp_num], &wr, &bad_wr);
+	
+	if (remote_ptr) {
+		wr.wr.rdma.remote_addr = (uintptr_t) remote_ptr;
+		wr.wr.rdma.rkey = remote_key;
+	}
+    return ibv_post_send((*ctx).qp[0], &wr, &bad_wr);
+	//return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 ////////////////
 
