@@ -865,6 +865,7 @@ int orig_main(struct kv_server_address *server, unsigned size, int argc, char *a
 	}
 
 	if (optind == argc - 1)
+        printf("server name is %s\n",argv[optind]);
 		servername = strdup(argv[optind]);
 	else if (optind < argc) {
 		usage(argv[0]);
