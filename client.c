@@ -606,6 +606,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 
 			switch ((int) wc[i].wr_id) {
 			case PINGPONG_SEND_WRID:
+                printf("msg sent successful\n");
                 scnt = scnt + 1;
 				break;
 
@@ -649,6 +650,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         printf("send %s\n",set_packet->eager_set_request.key_and_value);
         printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
+        printf("packet sent\n");
         return pp_wait_completions(kv_handle, 1); /* await EAGER_SET_REQUEST completion */
     }
 
