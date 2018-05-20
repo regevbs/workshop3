@@ -678,7 +678,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 	
     switch (packet->type) {
 	/* Only handle packets relevant to the server here - client will handle inside get/set() calls */
-    case EAGER_GET_REQUEST: /* TODO (10LOC): handle a short GET() on the server */
+    case EAGER_GET_REQUEST: ;/* TODO (10LOC): handle a short GET() on the server */
     //find the index of the value, get the value and send it back in a packet
         bool indexFound = false;
         int i;
@@ -706,7 +706,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             response_size = sizeof(char);
         }
         break;
-    case EAGER_SET_REQUEST: /* TODO (10LOC): handle a short SET() on the server */
+    case EAGER_SET_REQUEST: ;/* TODO (10LOC): handle a short SET() on the server */
     //check if the key exists, if it does replace value, if it doesn't make a new entry
         bool indexFound = false;
         int i;
@@ -734,8 +734,8 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             memcpy((handle->values)[i],packet->value,packet->valueSize);
         }
         break;
-    case RENDEZVOUS_GET_REQUEST: /* TODO (10LOC): handle a long GET() on the server */
-    case RENDEZVOUS_SET_REQUEST: /* TODO (20LOC): handle a long SET() on the server */
+    case RENDEZVOUS_GET_REQUEST: ;/* TODO (10LOC): handle a long GET() on the server */
+    case RENDEZVOUS_SET_REQUEST: ;/* TODO (20LOC): handle a long SET() on the server */
 
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
