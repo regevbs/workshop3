@@ -110,10 +110,10 @@ struct packet {
         } eager_set_request;
 
         struct {
-            /* TODO */
-            unsigned keyLen;
-            unsigned valueLen;
-            char delim;
+            /* TODO check what server responds to eager set req*/
+            //unsigned keyLen;
+            //unsigned valueLen;
+            //char key_and_value[0];
         } eager_set_response;
 
         /* RENDEZVOUS PROTOCOL PACKETS */
@@ -178,6 +178,8 @@ struct kv_handle
 {
     struct pingpong_context * ctx;//context
     int entryLen;
+    int * keyLen;
+    int * valueLen;
     char ** keys;
     char ** values;
 };

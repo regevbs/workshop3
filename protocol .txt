@@ -1,0 +1,99 @@
+Eager:
+
+4k buffer * how many packets we want? (or jsut 4k..?)
+send: header /delim/ key /delim/ value
+
+
+
+ kv_handle
+{
+    struct pingpong_context * ctx;//context
+    int entryLen;
+    int * keyLen;
+    int * valueLen;
+    char ** keys;
+    char ** values;
+};
+
+struct pingpong_context {
+	struct ibv_context	*context;
+	struct ibv_comp_channel *channel;
+	struct ibv_pd		*pd;
+	struct ibv_mr		*mr;
+	struct ibv_cq		*cq;
+	struct ibv_qp		*qp;
+	void			*buf;
+	int			 size;
+	int			 rx_depth;
+    int          routs;
+	int			 pending;
+	struct ibv_port_attr     portinfo;
+};
+
+//TODO when creating packet data make sure to cpy from buffer
+
+struct packet {
+    enum packet_type type; /* What kind of packet/protocol is this */
+    union {
+        /* The actual packet type will determine which struct will be used: */
+
+        struct {
+            /* TODO */
+            unsigned key_len;
+            char key[0]; //key will be an array of size len
+            
+        } eager_get_request;
+		
+        struct {
+            unsigned value_length;
+            char value[0];
+        } eager_get_response;
+
+        /* EAGER PROTOCOL PACKETS */
+        struct {
+#ifdef EX4
+            unsigned value_length; /* value is binary, so needs to have length! */
+#endif
+            int keyLen;
+            int valueLen;
+            char key_and_value[0]; /* null terminator between key and value */
+        } eager_set_request;
+
+        struct {
+            /* TODO */
+            unsigned int lenKey;
+            unsigned int lenValue;
+            char delim;
+        } eager_set_response;
+
+        /* RENDEZVOUS PROTOCOL PACKETS */
+        struct {
+            /* TODO */
+        } rndv_get_request;
+
+        struct {
+            /* TODO */
+        } rndv_get_response;
+
+        struct {
+            /* TODO */
+        } rndv_set_request;
+
+        struct {
+            /* TODO */
+        } rndv_set_response;
+
+		/* TODO - maybe there are more packet types? */
+					
+#ifdef EX4
+        struct {
+            unsigned num_of_servers;
+            char key[0];
+        } find;
+
+        struct {
+            unsigned selected_server;
+        } location;
+#endif
+    };
+};
