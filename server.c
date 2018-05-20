@@ -215,7 +215,7 @@ int pp_get_port_info(struct ibv_context *context, int port,
 static struct ibv_cq *pp_cq(struct pingpong_context *ctx)
 {
     printf("ppcq'd\n");
-    struct ibv_cq s = ctx->cq_s.cq;
+    struct ibv_cq* s = ctx->cq_s.cq;
     printf("survive\n");
 	return use_ts ? ibv_cq_ex_to_cq(ctx->cq_s.cq_ex) :
 		ctx->cq_s.cq;
