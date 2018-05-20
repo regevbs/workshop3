@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
     
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
-	struct pingpong_context *context = (struct pingpong_context*) malloc(sizeof(struct pingpong_context));
+	struct pingpong_context *context; //= (struct pingpong_context*) malloc(sizeof(struct pingpong_context));
 	struct pingpong_dest    my_dest[NUM_SOCKETS];
 	struct pingpong_dest    *rem_dest;
 	struct timeval           timer;
@@ -785,15 +785,7 @@ int main(int argc, char *argv[])
 	char			 gid[33];
 
 	srand48(getpid() * time(NULL));
-    /////////////////////
-    struct kv_handle * server_handle = malloc(sizeof(struct kv_handle));
-   
-    //struct pingpong_context *ctx = malloc(sizeof(struct pingpong_context));
-    server_handle->ctx = context;
-    server_handle->entryLen = 0;
     
-    
-    /////////////////////
     
     //get input for the server ip and port
     //int portNum;
@@ -876,6 +868,15 @@ int main(int argc, char *argv[])
     }
     //////////////////////////////////////////////
     //do server work
+    /////////////////////
+    struct kv_handle * server_handle = malloc(sizeof(struct kv_handle));
+   
+    //struct pingpong_context *ctx = malloc(sizeof(struct pingpong_context));
+    server_handle->ctx = context;
+    server_handle->entryLen = 0;
+    
+    
+    /////////////////////
     printf("server waiting for completions to respond\n");
     while (0 <= pp_wait_completions(server_handle, 1));//TODO will this ever exit?
     
