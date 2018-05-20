@@ -700,10 +700,11 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
     struct pingpong_context* ctx = handle->ctx;
     int rcnt, scnt, num_cq_events, use_event = 0;
 	rcnt = scnt = 0;
+    printf("pass 1\n")
 	while (rcnt + scnt < iters) {
 		struct ibv_wc wc[2];
 		int ne, i;
-
+        printf("pass 2\n");
 		do {
 			ne = ibv_poll_cq(pp_cq(ctx), 2, wc);
 			if (ne < 0) {
@@ -712,7 +713,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 			}
 
 		} while (ne < 1);
-
+        printf("pass 3\n");
 		for (i = 0; i < ne; ++i) {
             printf("server is onto sumthin\n");
 			if (wc[i].status != IBV_WC_SUCCESS) {
@@ -871,7 +872,7 @@ int main(int argc, char *argv[])
     }
     //////////////////////////////////////////////
     //do server work
-    
+    printf("server waiting for completions to respond\n");
     while (0 <= pp_wait_completions(server_handle, 1));//TODO will this ever exit?
     
     //////////////////////////////////////////////
