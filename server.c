@@ -606,7 +606,10 @@ static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode,
 	//return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 ////////////////
-
+void kv_release(char *value)
+{
+    /* TODO (2LOC): free value */
+}
 void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 {
 	unsigned response_size = 0;
@@ -821,7 +824,7 @@ int main(int argc, char *argv[])
     for ( int k = 0; k < NUM_SOCKETS ; k = k+1)
     {
         //Prepare to recieve messages. fill the recieve request queue of QP k
-        routs[k] = pp_post_recv(context, context->rx_depth,k); //post rx_depth recieve requests
+        routs[k] = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
             if (routs[k] < context->rx_depth) {
                 fprintf(stderr, "Couldn't post receive (%d)\n", routs[k]);
                 return 1;
