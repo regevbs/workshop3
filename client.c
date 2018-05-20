@@ -603,7 +603,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
 					wc[i].status, (int) wc[i].wr_id);
 				return 1;
 			}
-
+            struct packet* gotten_packet;
 			switch ((int) wc[i].wr_id) {
 			case PINGPONG_SEND_WRID:
                 printf("msg sent successful\n");
@@ -612,7 +612,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
 
 			case PINGPONG_RECV_WRID:
 				//handle_server_packets_only(handle, (struct packet*)&ctx->buf);
-				struct packet *gotten_packet = (struct packet*)ctx->buf;
+				gotten_packet = (struct packet*)ctx->buf;
                 if(gotten_packet->type == EAGER_GET_RESPONSE)
                 {
                     *answerBuffer = malloc(gotten_packet->eager_get_response.valueLen * sizeof(char));
@@ -668,11 +668,11 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
 
     pp_post_recv(ctx, 1); /* Posts a receive-buffer for RENDEZVOUS_SET_RESPONSE */
     pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
-    assert(pp_wait_completions(kv_handle, 2)); /* wait for both to complete */
+    assert(pp_wait_completions(kv_handle, 2,NULL)); /* wait for both to complete */
 
     assert(set_packet->type == RENDEZVOUS_SET_RESPONSE);
     pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, value, NULL, 0/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
-    return pp_wait_completions(kv_handle, 1); /* wait for both to complete */
+    return pp_wait_completions(kv_handle, 1,NULL); /* wait for both to complete */
 }
 
 int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
@@ -707,7 +707,7 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
     assert(pp_wait_completions(kv_handle, 2,value)); /* wait for both to complete */
 
     assert(set_packet->type == RENDEZVOUS_SET_RESPONSE);
-    pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, value, NULL, 0/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
+    pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, value, NULL, 0);/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
     return pp_wait_completions(kv_handle, 1,value); /* wait for both to complete */
 }
 
