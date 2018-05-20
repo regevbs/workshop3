@@ -706,7 +706,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         else
         {
             char toSend[] = "";
-            memcpy((handle->ctx)->buf,toSend[0],sizeof(char));// TODO make sure this is what we send
+            memcpy((handle->ctx)->buf,toSend,sizeof(char));// TODO make sure this is what we send
             response_size = sizeof(char);
         }
         break;
@@ -725,7 +725,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         if(indexFound)
         {
-            release((handle->values)[i]);//TODO check if release is the func we want
+            kv_release((handle->values)[i]);//TODO check if release is the func we want
             (handle->valueLen)[i] = packet->eager_set_request.valueLen;
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
             //memcpy the found data into the buffer
@@ -1024,12 +1024,12 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         printf("sending eager\n");
         set_packet->eager_set_request.keyLen = strlen(key);
         set_packet->eager_set_request.valueLen = strlen(value);
-        memcpy(set_packet->eager_set_request.key_and_value[0],key,strlen(key));
-        memcpy(set_packet->eager_set_request.key_and_value[strlen(key)],value,strlen(value));
+        memcpy(set_packet->eager_set_request.key_and_value,key,strlen(key));
+        memcpy(&(set_packet->eager_set_request.key_and_value[strlen(key)]),value,strlen(value));
         /* TODO (4LOC): fill in the rest of the set_packet */
         printf("send %s\n",set_packet->eager_set_request.key_and_value);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
-        return pp_wait_completions(ctx, 1); /* await EAGER_SET_REQUEST completion */
+        return pp_wait_completions(kv_handle, 1); /* await EAGER_SET_REQUEST completion */
     }
 
     /* Otherwise, use RENDEZVOUS - exercise part 2 */
@@ -1039,11 +1039,11 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
 
     pp_post_recv(ctx, 1); /* Posts a receive-buffer for RENDEZVOUS_SET_RESPONSE */
     pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
-    assert(pp_wait_completions(ctx, 2)); /* wait for both to complete */
+    assert(pp_wait_completions(kv_handle, 2)); /* wait for both to complete */
 
     assert(set_packet->type == RENDEZVOUS_SET_RESPONSE);
     pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, value, NULL, 0/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
-    return pp_wait_completions(ctx, 1); /* wait for both to complete */
+    return pp_wait_completions(kv_handle, 1); /* wait for both to complete */
 }
 
 int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
