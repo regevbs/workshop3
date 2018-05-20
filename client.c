@@ -707,7 +707,7 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
     assert(pp_wait_completions(kv_handle, 2,value)); /* wait for both to complete */
 
     assert(set_packet->type == RENDEZVOUS_SET_RESPONSE);
-    pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, NULL, NULL, 0);/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */);
+    pp_post_send(ctx, IBV_WR_RDMA_WRITE, packet_size, NULL, NULL, 0);/* TODO (1LOC): replace with remote info for RDMA_WRITE from packet */
     return pp_wait_completions(kv_handle, 1,value); /* wait for both to complete */
 }
 
