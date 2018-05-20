@@ -700,7 +700,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
     struct pingpong_context* ctx = handle->ctx;
     int rcnt, scnt, num_cq_events, use_event = 0;
 	rcnt = scnt = 0;
-    printf("pass 1\n")
+    printf("pass 1\n");
 	while (rcnt + scnt < iters) {
 		struct ibv_wc wc[2];
 		int ne, i;
