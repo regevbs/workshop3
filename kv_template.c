@@ -684,9 +684,10 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
     //find the index of the value, get the value and send it back in a packet
         bool indexFound = false;
         int i;
+        printf("key recieved: %s\n",packet->eager_get_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
-            if(strcmp((handle->keys)[i],packet->key) == 0) //means we found the key
+            if(strcmp((handle->keys)[i],packet->eager_get_request.key) == 0) //means we found the key
             {
                 indexFound = true;
                 break;
@@ -712,9 +713,10 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
     //check if the key exists, if it does replace value, if it doesn't make a new entry
         bool indexFound = false;
         int i;
+        printf("set string: %s\n",packet->eager_set_request.key_and_value);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
-            if(strcmp((handle->keys)[i],packet->key) == 0) //means we found the key
+            if(strcmp((handle->keys)[i],packet->eager_set_request.key_and_value) == 0) //means we found the key
             {
                 indexFound = true;
                 break;
@@ -723,17 +725,20 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         if(indexFound)
         {
             release((handle->values)[i]);//TODO check if release is the func we want
-            (handle->valueLen)[i] = strlen(packet->value);
-            (handle->values)[i] = (char*) malloc(packet->valueSize);
+            (handle->valueLen)[i] = packet->eager_set_request.valueLen;
+            (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
             //memcpy the found data into the buffer
-            memcpy((handle->values)[i],packet->value,packet->valueSize);
+            memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
         }
         else
         {
-            (handle->valueLen)[i] = strlen(packet->value);
-            (handle->values)[i] = (char*) malloc(packet->valueSize);
+            (handle->keyLen)[i] = strlen(packet->eager_set_request.keyLen);
+            (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
+            (handle->valueLen)[i] = strlen(packet->eager_set_request.valueLen);
+            (handle->values)[i] = (char*) malloc(handle->valueLen)[i]);
             handle->entryLen = handle->entryLen + 1;
-            memcpy((handle->values)[i],packet->value,packet->valueSize);
+            memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
+            memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
         }
         break;
     case RENDEZVOUS_GET_REQUEST: ;/* TODO (10LOC): handle a long GET() on the server */
