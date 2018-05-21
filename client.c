@@ -628,11 +628,11 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                     memcpy(*answerBuffer,gotten_packet->eager_get_response.value,gotten_packet->eager_get_response.valueLen);
                     printf("Answer buffer:\n %s\n",*answerBuffer);
                 }
-                else if(gotten_packet->type = EAGER_SET_RESPONSE)
+                else if(gotten_packet->type == EAGER_SET_RESPONSE)
                 {
                     printf("set is done on server, continuing\n");
                 }
-                else if(gotten_packet->type = RENDEZVOUS_GET_RESPONSE)
+                else if(gotten_packet->type == RENDEZVOUS_GET_RESPONSE)
                 {
                     printf("gotten rndv get response\n");
                     //register memory at value in size valueLen, and sendit to packet data
@@ -646,7 +646,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
                     printf("RDMA recieved: %s\n",*answerBuffer);
                 }
-                else if(gotten_packet->type = RENDEZVOUS_SET_RESPONSE)
+                else if(gotten_packet->type == RENDEZVOUS_SET_RESPONSE)
                 {
                     printf("got rend set response@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
                     printf("will set string: %s\n",valueToSet);
