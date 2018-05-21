@@ -780,6 +780,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         response_packet->type = RENDEZVOUS_SET_RESPONSE;
         response_size = sizeof(struct packet);
         //int i;
+        printf("REDN SET REQUEST$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
         printf("set string: %s\n",packet->rndv_set_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
@@ -839,7 +840,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
 
         }
-        printf("responding\n");
+        printf("responding REDN_SET_RESPONSE%%%%%%%%%%%%%%%%%%%%%%%%%\n");
         break;
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
