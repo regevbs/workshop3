@@ -866,12 +866,12 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
     printf("set success\n");
-    assert(0 == get(handle, "1", &recv_buffer));
+    /*assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
-    release(recv_buffer);
+    release(recv_buffer);*/
 
     /* Test logic */
-    assert(0 == get(handle, "1", &recv_buffer));
+    /*assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     memset(send_buffer, 'b', 100);
@@ -881,18 +881,18 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'b', 100);
     assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
-    release(recv_buffer);
+    release(recv_buffer);*/
 
     /* Test large size */
-    memset(send_buffer, 'a', MAX_TEST_SIZE - 1);
+    /*memset(send_buffer, 'a', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "1", send_buffer));
     assert(0 == set(handle, "333", send_buffer));
     assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
-    release(recv_buffer);
+    release(recv_buffer);*/
     
     ///////////////////////////
-
+    sleep(10);
     ibv_free_device_list(dev_list);
     free(rem_dest);
     //my_close(handle);
