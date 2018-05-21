@@ -650,15 +650,17 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         {
             printf("index found! sending reply\n");
             response_packet->type = EAGER_GET_RESPONSE;
-            response_size = sizeof(struct packet) + strlen((handle->values)[i])  + 1;
+            response_size = sizeof(struct packet) + strlen((handle->valueLen)[i])  + 1;//TODO changed to valuelen
             if(response_size <= EAGER_PROTOCOL_LIMIT)
             {
+                
                 response_packet->eager_get_response.valueLen = strlen((handle->values)[i])  + 1;
                 //memcpy the found data into the buffer
                 memcpy(response_packet->eager_get_response.value,(handle->values)[i],strlen((handle->values)[i])  + 1);
             }
             else //need to respond with a rndv_get_response
             {
+                printf("out of limits\n");
                 response_packet->type = RENDEZVOUS_GET_RESPONSE;
                 response_size = sizeof(struct packet);
                 if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
@@ -882,6 +884,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 
 			switch ((int) wc[i].wr_id) {
 			case PINGPONG_SEND_WRID:
+                printf("server got send completion\n");
                 scnt = scnt + 1;
 				break;
 

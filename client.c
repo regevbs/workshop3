@@ -634,6 +634,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                 }
                 else if(gotten_packet->type = RENDEZVOUS_GET_RESPONSE)
                 {
+                    printf("gotten rndv get response\n");
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd, *answerBuffer,
                                                     gotten_packet->rndv_get_response.valueLen, IBV_ACCESS_LOCAL_WRITE |
