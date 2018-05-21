@@ -687,9 +687,9 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
         printf("type is %d\n",EAGER_GET_REQUEST);
         set_packet->type = EAGER_GET_REQUEST;
         printf("sending eager get.\n key = %s\n",key);
-        set_packet->eager_get_request.keyLen = strlen(key);
+        set_packet->eager_get_request.keyLen = strlen(key) + 1;
         
-        memcpy(set_packet->eager_get_request.key,key,strlen(key));
+        memcpy(set_packet->eager_get_request.key,key,strlen(key) + 1);
  
         /* TODO (4LOC): fill in the rest of the get_packet */
         printf("send %s\n",set_packet->eager_get_request.key);
@@ -866,9 +866,10 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
     printf("set success\n");
-    /*assert(0 == get(handle, "1", &recv_buffer));
+    assert(0 == get(handle, "1", &recv_buffer));
+    printf("recv buffer: %s\n",recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
-    release(recv_buffer);*/
+    release(recv_buffer);
 
     /* Test logic */
     /*assert(0 == get(handle, "1", &recv_buffer));

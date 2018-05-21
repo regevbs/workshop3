@@ -614,6 +614,8 @@ void kv_release(char *value)
 void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 {
 	unsigned response_size = 0;
+    struct pingpong_context *ctx = kv_handle->ctx;
+    struct packet *response_packet = (struct packet*)ctx->buf;
 	bool indexFound = false;
     int i=0;
     printf("server got packet\ntype = %d\n",packet->type);
@@ -636,16 +638,28 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         memset((handle->ctx)->buf,0,(handle->ctx)->size); //TODO make sure buffer is not needed anymore
         if(indexFound)
         {
-            
+            printf("index found! sending reply\n");
+            response_packet->type = EAGER_GET_RESPONSE;
+            response_size = sizeof(struct packet) + strlen((handle->values)[i])  + 1;
+            response_packet->eager_get_response.valueLen = strlen((handle->values)[i])  + 1;
             //memcpy the found data into the buffer
-            memcpy((handle->ctx)->buf,(handle->values)[i],(handle->valueLen)[i]);
-            response_size = (handle->valueLen)[i];
+            memcpy(response_packet->eager_get_response.value,(handle->values)[i],strlen((handle->values)[i])  + 1);
+            
+            //memcpy((handle->ctx)->buf,(handle->values)[i],(handle->valueLen)[i]);
+            
         }
         else
         {
+            printf("index not found T_T\n");
             char toSend[] = "";
-            memcpy((handle->ctx)->buf,toSend,sizeof(char));// TODO make sure this is what we send
-            response_size = sizeof(char);
+            response_packet->type = EAGER_GET_RESPONSE;
+            response_size = sizeof(struct packet) + strlen(toSend)  + 1;
+            response_packet->eager_get_response.valueLen = strlen(toSend)  + 1;
+            //memcpy the found data into the buffer
+            memcpy(response_packet->eager_get_response.value,toSend,strlen(toSend)  + 1);
+            
+            //memcpy((handle->ctx)->buf,toSend,sizeof(char));// TODO make sure this is what we send
+            //response_size = sizeof(char);
         }
         break;
     case EAGER_SET_REQUEST: /* TODO (10LOC): handle a short SET() on the server */
@@ -673,15 +687,11 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         {
             printf("no index found\n");
             (handle->keyLen)[i] = packet->eager_set_request.keyLen;
-            printf("wa\n");
             (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
-             printf("wawa\n");
             (handle->valueLen)[i] = packet->eager_set_request.valueLen;
-             printf("wawawa\n");
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
             handle->entryLen = handle->entryLen + 1;
             memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
-             printf("wawawawa\n");
             memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
             printf("key inserted = %s\nvalue inserted = %s\n",(handle->keys)[i],(handle->values)[i]);
         }
