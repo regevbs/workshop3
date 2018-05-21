@@ -787,13 +787,16 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         if(indexFound)
         {
+            printf("index found at rdv\n");
             kv_release((handle->values)[i]);//TODO check if release is the func we want
             (handle->valueLen)[i] = packet->rndv_set_request.valueLen;
             //TODO dereg the older MR that was here and zero all its attributes
             ibv_dereg_mr(handle->registeredMR[i]);
             handle->remote_addresses[i] = 0;
             handle->rkeyValue[i] = 0;
+            printf("dereg done\n");
             free(handle->values[i]);
+            printf("free done\n");
             //TODO reg a new MR here.
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]); //this is the address for the new MR.
             handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
@@ -802,6 +805,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
             handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
             //TODO create the packet to return for the client to write into this MR.
+            printf("mem re - registered\n");
             response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
            
@@ -826,7 +830,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
 
         }
-        
+        printf("responding\n");
         break;
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
