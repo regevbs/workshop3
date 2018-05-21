@@ -670,12 +670,17 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         else
         {
+            printf("no index found\n");
             (handle->keyLen)[i] = packet->eager_set_request.keyLen;
+            printf("wa\n");
             (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
+             printf("wawa\n");
             (handle->valueLen)[i] = packet->eager_set_request.valueLen;
+             printf("wawawa\n");
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
             handle->entryLen = handle->entryLen + 1;
             memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
+             printf("wawawawa\n");
             memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
             printf("key inserted = %s\nvalue inserted = %s\n",(handle->keys)[i],(handle->values)[i]);
         }
