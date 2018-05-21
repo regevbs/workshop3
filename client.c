@@ -649,7 +649,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                 else if(gotten_packet->type == RENDEZVOUS_SET_RESPONSE)
                 {
                     printf("got rend set response@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-                    printf("will set string: %s\n",valueToSet);
+                    //printf("will set string: %s\n",valueToSet);
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd,(void*) &(*valueToSet),
                                                     valueLen, IBV_ACCESS_LOCAL_WRITE |
@@ -660,7 +660,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                             (void*)gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
-                    printf("RDMA sent: %s\n",valueToSet);
+                    printf("RDMA sent: %s\n",handle->registeredMR[handle->numRegistered-1]->addr);
                 }
                 pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
