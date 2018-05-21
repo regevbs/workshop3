@@ -647,7 +647,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     unsigned packet_size = strlen(key) + strlen(value) + sizeof(struct packet);
     if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
         /* Eager protocol - exercise part 1 */
-        set_packet->type = EAGER_SET_REQUEST;
+        set_packet->type = ntohl(EAGER_SET_REQUEST);
         printf("sending eager.\n key = %s\n value = %s\n",key,value);
         set_packet->eager_set_request.keyLen = strlen(key);
         set_packet->eager_set_request.valueLen = strlen(value);
@@ -684,7 +684,7 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
     if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
         /* Eager protocol - exercise part 1 */
         printf("type is %d\n",EAGER_GET_REQUEST);
-        set_packet->type = EAGER_GET_REQUEST;
+        set_packet->type = ntohl(EAGER_GET_REQUEST);
         printf("sending eager get.\n key = %s\n",key);
         set_packet->eager_get_request.keyLen = strlen(key);
         
