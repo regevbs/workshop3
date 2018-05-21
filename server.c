@@ -107,7 +107,7 @@ struct packet {
         } rndv_set_request;
 
         struct {
-            remote_address;
+            uint64_t remote_address;
             uint32_t rkey;
         } rndv_set_response;
 
