@@ -730,7 +730,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 				break;
 
 			case PINGPONG_RECV_WRID:
-				handle_server_packets_only(handle, (struct packet*)&ctx->buf);
+				handle_server_packets_only(handle, (struct packet*)ctx->buf);
 				pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
 				break;
