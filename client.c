@@ -652,6 +652,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                                                     valueLen, IBV_ACCESS_LOCAL_WRITE |
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                     handle->numRegistered = handle->numRegistered + 1;
+                    printf("mem registered\n");
                     pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen,valueToSet,
                             (void*)gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
@@ -710,6 +711,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     set_packet->rndv_set_request.valueLen = strlen(value) + 1;
     memcpy(set_packet->rndv_set_request.key,key,strlen(key) + 1);
     pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */    
+    
     return (pp_wait_completions(kv_handle, 2,NULL,value,strlen(value)+1));//sent value. wait for RD_SET_RESPONSE and RDMA_WRITE the value
     /*
     pp_post_recv(ctx, 1); // Posts a receive-buffer for RENDEZVOUS_SET_RESPONSE 
