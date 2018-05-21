@@ -28,6 +28,7 @@
 #define MAX_TEST_SIZE (10 * EAGER_PROTOCOL_LIMIT)
 #define TEST_LOCATION "~/www/"
 #define NUM_SOCKETS 1
+#define MAX_SERVER_ENTRIES 1000
 typedef int bool;
 #define true 1
 #define false 0
@@ -170,10 +171,10 @@ struct kv_handle
 {
     struct pingpong_context * ctx;//context
     int entryLen;
-    int * keyLen;
-    int * valueLen;
-    char ** keys;
-    char ** values;
+    int keyLen[MAX_SERVER_ENTRIES];
+    int valueLen[MAX_SERVER_ENTRIES];
+    char * keys[MAX_SERVER_ENTRIES];
+    char * values[MAX_SERVER_ENTRIES];
 };
 
 
