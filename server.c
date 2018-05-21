@@ -90,19 +90,25 @@ struct packet {
 
         /* RENDEZVOUS PROTOCOL PACKETS */
         struct {
-            /* TODO */
+            int keyLen;
+            char key[0];
         } rndv_get_request;
 
         struct {
-            /* TODO */
+            uint64_t remote_address;
+            uint32_t rkey;
+            int valueLen;
         } rndv_get_response;
 
         struct {
-            /* TODO */
+            int keyLen;
+            int valueLen;
+            char key[0];
         } rndv_set_request;
 
         struct {
-            /* TODO */
+            remote_address;
+            uint32_t rkey;
         } rndv_set_response;
 
 		/* TODO - maybe there are more packet types? */
@@ -173,6 +179,9 @@ struct kv_handle
     int entryLen;
     int keyLen[MAX_SERVER_ENTRIES];
     int valueLen[MAX_SERVER_ENTRIES];
+    struct ibv_mr * registeredMR[MAX_SERVER_ENTRIES];
+    uint32_t rkeyValue[MAX_SERVER_ENTRIES];
+    uint64_t remote_addresses[MAX_SERVER_ENTRIES];
     char * keys[MAX_SERVER_ENTRIES];
     char * values[MAX_SERVER_ENTRIES];
 };
@@ -642,10 +651,29 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             printf("index found! sending reply\n");
             response_packet->type = EAGER_GET_RESPONSE;
             response_size = sizeof(struct packet) + strlen((handle->values)[i])  + 1;
-            response_packet->eager_get_response.valueLen = strlen((handle->values)[i])  + 1;
-            //memcpy the found data into the buffer
-            memcpy(response_packet->eager_get_response.value,(handle->values)[i],strlen((handle->values)[i])  + 1);
-            
+            if(response_size <= EAGER_PROTOCOL_LIMIT)
+            {
+                response_packet->eager_get_response.valueLen = strlen((handle->values)[i])  + 1;
+                //memcpy the found data into the buffer
+                memcpy(response_packet->eager_get_response.value,(handle->values)[i],strlen((handle->values)[i])  + 1);
+            }
+            else //need to respond with a rndv_get_response
+            {
+                response_packet->type = RENDEZVOUS_GET_RESPONSE;
+                response_size = sizeof(struct packet);
+                if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
+                {
+                    //TODO register memory of this entry
+                    handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
+                                                        handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
+                                                        IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
+                    handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
+                    handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+                }
+                response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
+                response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
+                response_packet->rndv_get_response.valueLen = strlen(handle->values[i]) + 1;
+            }
             //memcpy((handle->ctx)->buf,(handle->values)[i],(handle->valueLen)[i]);
             
         }
@@ -699,9 +727,107 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         response_packet->type = EAGER_SET_RESPONSE;
         response_size = sizeof(struct packet);
         break;
-    case RENDEZVOUS_GET_REQUEST: ;/* TODO (10LOC): handle a long GET() on the server */
-    case RENDEZVOUS_SET_REQUEST: ;/* TODO (20LOC): handle a long SET() on the server */
+    case RENDEZVOUS_GET_REQUEST:/* TODO (10LOC): handle a long GET() on the server */
+         //find the index of the value, get the value and send it back in a packet
+        indexFound = false;
+        //int i;
+        printf("key recieved: %s\n",packet->rndv_get_request.key);
+        for ( i = 0; i < handle->entryLen; i = i +1 )
+        {
+            printf("comparing: %s with %s\n",(handle->keys)[i], packet->rndv_get_request.key);
+            if(strcmp((handle->keys)[i],packet->rndv_get_request.key) == 0) //means we found the key
+            {
+                indexFound = true;
+                break;
+            }
+        }
+        if(indexFound)
+        {
+            printf("index found! sending reply\n");
+            response_packet->type = RENDEZVOUS_GET_RESPONSE;
+            response_size = sizeof(struct packet);
+            if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
+            {
+                //TODO register memory of this entry
+                handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
+                                                    handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
+                                                    IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
+                handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
+                handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+            }
+            response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
+            response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
+            response_packet->rndv_get_response.valueLen = strlen(handle->values[i]) + 1;
+            //all the info is sent.
+        }
+        else
+        {
+            printf("index not found T_T\n");
+            response_packet->type = RENDEZVOUS_GET_RESPONSE;
+            response_size = sizeof(struct packet);
+            response_packet->rndv_get_response.remote_address = 0;
+            response_packet->rndv_get_response.rkey = 0;
+            response_packet->rndv_get_response.valueLen = 0;
+        }
+        
+        break;
+    case RENDEZVOUS_SET_REQUEST: /* TODO (20LOC): handle a long SET() on the server */
+        indexFound = false;
+        response_packet->type = RENDEZVOUS_SET_RESPONSE;
+        response_size = sizeof(struct packet);
+        //int i;
+        printf("set string: %s\n",packet->rndv_set_request.key);
+        for ( i = 0; i < handle->entryLen; i = i +1 )
+        {
+            if(strcmp((handle->keys)[i],packet->rndv_set_request.key) == 0) //means we found the key
+            {
+                indexFound = true;
+                break;
+            }
+        }
+        if(indexFound)
+        {
+            kv_release((handle->values)[i]);//TODO check if release is the func we want
+            (handle->valueLen)[i] = packet->rndv_set_request.valueLen;
+            //TODO dereg the older MR that was here and zero all its attributes
+            ibv_dereg_mr(handle->registeredMR[i]);
+            handle->remote_addresses[i] = 0;
+            handle->rkeyValue[i] = 0;
+            free(handle->values[i]);
+            //TODO reg a new MR here.
+            (handle->values)[i] = (char*) malloc((handle->valueLen)[i]); //this is the address for the new MR.
+            handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
+                                                    handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
+                                                    IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
+            handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
+            handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+            //TODO create the packet to return for the client to write into this MR.
+            response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
+            response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
+           
+        }
+        else
+        {
+            printf("no index found\n");
+            (handle->keyLen)[i] = packet->rndv_set_request.keyLen;
+            (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
+            (handle->valueLen)[i] = packet->rndv.valueLen;
+            handle->entryLen = handle->entryLen + 1;
+            memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
+            //TODO reg a new MR here.
+            (handle->values)[i] = (char*) malloc((handle->valueLen)[i]);
+            handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
+                                                    handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
+                                                    IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
+            handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
+            handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+            //TODO create the packet to return for the client to write into this MR.
+            response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
+            response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
 
+        }
+        
+        break;
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
 #endif

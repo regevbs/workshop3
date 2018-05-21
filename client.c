@@ -86,19 +86,25 @@ struct packet {
 
         /* RENDEZVOUS PROTOCOL PACKETS */
         struct {
-            /* TODO */
+            int keyLen;
+            char key[0];
         } rndv_get_request;
 
         struct {
-            /* TODO */
+            uint64_t remote_address;
+            uint32_t rkey;
+            int valueLen;
         } rndv_get_response;
 
         struct {
-            /* TODO */
+            int keyLen;
+            int valueLen;
+            char key[0];
         } rndv_set_request;
 
         struct {
-            /* TODO */
+            remote_address;
+            uint32_t rkey;
         } rndv_set_response;
 
 		/* TODO - maybe there are more packet types? */
@@ -667,6 +673,8 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     }
 
     /* Otherwise, use RENDEZVOUS - exercise part 2 */
+    //Flow: send a request to send this big data, recv the rkey to the registered 
+    //memory then use RDMA_WRITE
     set_packet->type = RENDEZVOUS_SET_REQUEST;
     printf("randevo\n");
     /* TODO (4LOC): fill in the rest of the set_packet - request peer address & remote key */
@@ -721,6 +729,7 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
 void kv_release(char *value)
 {
     /* TODO (2LOC): free value */
+    free(value);
 }
 
 int kv_close(struct kv_handle *kv_handle)
