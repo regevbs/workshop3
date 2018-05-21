@@ -866,6 +866,7 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
     printf("set success\n");
+    sleep(5);
     assert(0 == get(handle, "1", &recv_buffer));
     printf("recv buffer: %s\n",recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
