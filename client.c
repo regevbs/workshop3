@@ -37,7 +37,7 @@ enum packet_type {
     EAGER_GET_REQUEST,
     EAGER_GET_RESPONSE,
     EAGER_SET_REQUEST,
-    // EAGER_SET_RESPONSE - not needed!
+    EAGER_SET_RESPONSE
 
     RENDEZVOUS_GET_REQUEST,
     RENDEZVOUS_GET_RESPONSE,
@@ -619,6 +619,10 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                     memcpy(*answerBuffer,gotten_packet->eager_get_response.value,gotten_packet->eager_get_response.valueLen);
                     printf("Answer buffer:\n %s\n",*answerBuffer);
                 }
+                if(gotten_packet->type = EAGER_SET_RESPONSE)
+                {
+                    printf("set is done on server, continuing\n");
+                }
                 pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
 				break;
@@ -659,7 +663,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         printf("packet type is %d\n",set_packet->type);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
         printf("packet sent\n");
-        return pp_wait_completions(kv_handle, 1,NULL); /* await EAGER_SET_REQUEST completion */
+        return pp_wait_completions(kv_handle, 2,NULL); /* await EAGER_SET_REQUEST completion and EAGER_SET_RESPONSE */
     }
 
     /* Otherwise, use RENDEZVOUS - exercise part 2 */
@@ -866,7 +870,7 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
     printf("set success\n");
-    sleep(1);
+    //sleep(1);
     assert(0 == get(handle, "1", &recv_buffer));
     printf("recv buffer: %s\n",recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
@@ -877,13 +881,13 @@ int main(int argc, char *argv[])
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     memset(send_buffer, 'b', 100);
-    sleep(1);
+    //sleep(1);
     assert(0 == set(handle, "1", send_buffer));
     memset(send_buffer, 'c', 100);
-    sleep(1);
+    //sleep(1);
     assert(0 == set(handle, "22", send_buffer));
     memset(send_buffer, 'b', 100);
-    sleep(1);
+    //sleep(1);
     assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
@@ -898,7 +902,7 @@ int main(int argc, char *argv[])
     
     ///////////////////////////
     printf("client success@#!@@\n");
-    sleep(10);
+    //sleep(10);
     ibv_free_device_list(dev_list);
     free(rem_dest);
     //my_close(handle);
