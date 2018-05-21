@@ -607,9 +607,9 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
 
 		for (i = 0; i < ne; ++i) {
 			if (wc[i].status != IBV_WC_SUCCESS) {
-				fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",
+				fprintf(stderr, "Failed status %s (%d) for wr_id %d opcode %d\n",
 					ibv_wc_status_str(wc[i].status),
-					wc[i].status, (int) wc[i].wr_id);
+					wc[i].status, (int) wc[i].wr_id,(int)wc[i].opcode);
 				return 1;
 			}
             struct packet* gotten_packet;
