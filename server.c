@@ -677,6 +677,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             handle->entryLen = handle->entryLen + 1;
             memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
             memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
+            printf("key inserted = %s\nvalue inserted = %s\n",(handle->keys)[i],(handle->values)[i]);
         }
         break;
     case RENDEZVOUS_GET_REQUEST: ;/* TODO (10LOC): handle a long GET() on the server */
