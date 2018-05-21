@@ -791,10 +791,15 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             kv_release((handle->values)[i]);//TODO check if release is the func we want
             (handle->valueLen)[i] = packet->rndv_set_request.valueLen;
             //TODO dereg the older MR that was here and zero all its attributes
-            ibv_dereg_mr(handle->registeredMR[i]);
-            handle->remote_addresses[i] = 0;
-            handle->rkeyValue[i] = 0;
-            printf("dereg done\n");
+            if(handle->remote_addresses[i] != 0 && handle->rkeyValue[i] != 0)
+            {
+                printf("deregging\n");
+                ibv_dereg_mr(handle->registeredMR[i]);
+                handle->remote_addresses[i] = 0;
+                handle->rkeyValue[i] = 0;
+                printf("dereg done\n");
+                
+            }
             free(handle->values[i]);
             printf("free done\n");
             //TODO reg a new MR here.
