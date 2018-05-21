@@ -847,12 +847,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 	if (response_size) {
 		pp_post_send(handle->ctx, IBV_WR_SEND, response_size, NULL, NULL, 0);
 	}
-    //debug only
-    if(packet->type == RENDEZVOUS_SET_REQUEST)
-    {
-        sleep(5);
-        printf("key: %s\nvalue%s\n",handle->keys[i],handle->values[i]);
-    }
+    
 }
 
 //////////////////////////////////////////////////////////
