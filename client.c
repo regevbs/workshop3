@@ -656,6 +656,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         /* TODO (4LOC): fill in the rest of the set_packet */
         printf("send %s\n",set_packet->eager_set_request.key_and_value);
         printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
+        printf("packet type is %d\n",set_packet->type);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
         printf("packet sent\n");
         return pp_wait_completions(kv_handle, 1,NULL); /* await EAGER_SET_REQUEST completion */
