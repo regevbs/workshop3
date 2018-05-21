@@ -656,7 +656,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                     handle->numRegistered = handle->numRegistered + 1;
                     printf("mem registered\n");
-                    pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen,valueToSet,
+                    pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen,handle->registeredMR[handle->numRegistered-1]->addr,
                             (void*)gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
