@@ -650,17 +650,17 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         {
             printf("index found! sending reply\n");
             response_packet->type = EAGER_GET_RESPONSE;
-            response_size = sizeof(struct packet) + strlen((handle->valueLen)[i])  + 1;//TODO changed to valuelen
+            //response_size = sizeof(struct packet) + strlen((handle->values)[i])  + 1;
+            response_size = sizeof(struct packet) + handle->valueLen[i] + 1;
             if(response_size <= EAGER_PROTOCOL_LIMIT)
             {
-                
                 response_packet->eager_get_response.valueLen = strlen((handle->values)[i])  + 1;
                 //memcpy the found data into the buffer
                 memcpy(response_packet->eager_get_response.value,(handle->values)[i],strlen((handle->values)[i])  + 1);
             }
             else //need to respond with a rndv_get_response
             {
-                printf("out of limits\n");
+                printf("oversize get\n");
                 response_packet->type = RENDEZVOUS_GET_RESPONSE;
                 response_size = sizeof(struct packet);
                 if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
