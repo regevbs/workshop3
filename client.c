@@ -609,7 +609,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
 			if (wc[i].status != IBV_WC_SUCCESS) {
 				fprintf(stderr, "Failed status %s (%d) for wr_id %d opcode %d\n",
 					ibv_wc_status_str(wc[i].status),
-					wc[i].status, (int) wc[i].wr_id,(int)wc[i].opcode);
+					wc[i].status, (int) wc[i].wr_id, wc[i].opcode);
 				return 1;
 			}
             struct packet* gotten_packet;
@@ -707,6 +707,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     //Flow: send a request to send this big data, recv the rkey to the registered 
     //memory then use RDMA_WRITE
     set_packet->type = RENDEZVOUS_SET_REQUEST;
+    packet_size = sizeof(struct packet);
     printf("randevo\n");
     set_packet->rndv_set_request.keyLen = strlen(key) + 1;
     set_packet->rndv_set_request.valueLen = strlen(value) + 1;
