@@ -808,6 +808,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             free(handle->values[i]);
             printf("free done\n");
             //TODO reg a new MR here.
+            printf("server regs memory of size: %d\n@@@@@@@@@@@$$$$$$$$$$$%%%%%%%%\n",(handle->valueLen)[i]);
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]); //this is the address for the new MR.
             handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
                                                     handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
