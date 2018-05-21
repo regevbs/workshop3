@@ -61,13 +61,13 @@ struct packet {
 
         struct {
             /* TODO */
-            unsigned key_len;
+            unsigned keyLen;
             char key[0]; //key will be an array of size len
             
         } eager_get_request;
 		
         struct {
-            unsigned value_length;
+            unsigned valueLen;
             char value[0];
         } eager_get_response;
 
@@ -614,7 +614,7 @@ void kv_release(char *value)
 void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 {
 	unsigned response_size = 0;
-    struct pingpong_context *ctx = kv_handle->ctx;
+    struct pingpong_context *ctx = handle->ctx;
     struct packet *response_packet = (struct packet*)ctx->buf;
 	bool indexFound = false;
     int i=0;
