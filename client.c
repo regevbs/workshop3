@@ -644,15 +644,15 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     struct pingpong_context *ctx = kv_handle->ctx;
     struct packet *set_packet = (struct packet*)ctx->buf;
 
-    unsigned packet_size = strlen(key) + strlen(value) + sizeof(struct packet);
+    unsigned packet_size = strlen(key) + strlen(value) +2 + sizeof(struct packet);
     if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
         /* Eager protocol - exercise part 1 */
         set_packet->type = EAGER_SET_REQUEST;
         printf("sending eager.\n key = %s\n value = %s\n",key,value);
-        set_packet->eager_set_request.keyLen = strlen(key);
-        set_packet->eager_set_request.valueLen = strlen(value);
-        memcpy(set_packet->eager_set_request.key_and_value,key,strlen(key));
-        memcpy(&(set_packet->eager_set_request.key_and_value[strlen(key)]),value,strlen(value));
+        set_packet->eager_set_request.keyLen = strlen(key) + 1;
+        set_packet->eager_set_request.valueLen = strlen(value) + 1;
+        memcpy(set_packet->eager_set_request.key_and_value,key,strlen(key) + 1);
+        memcpy(&(set_packet->eager_set_request.key_and_value[strlen(key) + 1]),value,strlen(value) + 1);
         /* TODO (4LOC): fill in the rest of the set_packet */
         printf("send %s\n",set_packet->eager_set_request.key_and_value);
         printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
