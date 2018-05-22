@@ -803,7 +803,7 @@ int main(int argc, char *argv[])
         numMessages[i] = 100000; //start with 10000 iters per size of message
     }
 	enum ibv_mtu		 mtu = IBV_MTU_1024;
-	unsigned int             rx_depth = 5000;
+	unsigned int             rx_depth = 50;
 	
 	int                      use_event = 0;
 	int                      routs[NUM_SOCKETS];
