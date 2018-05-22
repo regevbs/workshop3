@@ -561,7 +561,7 @@ static int pp_post_recv(struct pingpong_context *ctx, int n)
 	return i;
 }
 
-static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode, unsigned size, const char *local_ptr, uint64_t remote_ptr, uint32_t remote_key)
+static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode, unsigned size, const char *local_ptr,uint32_t lkey, uint64_t remote_ptr, uint32_t remote_key)
 {
 	struct ibv_sge list = {
 		.addr	= (uintptr_t) (local_ptr ? local_ptr : ctx->buf),
@@ -640,7 +640,8 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                                                     gotten_packet->rndv_get_response.valueLen, IBV_ACCESS_LOCAL_WRITE |
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                     handle->numRegistered = handle->numRegistered + 1;
-                    pp_post_send(handle->ctx,IBV_WR_RDMA_READ,gotten_packet->rndv_get_response.valueLen,*answerBuffer,
+                    pp_post_send(handle->ctx,IBV_WR_RDMA_READ,gotten_packet->rndv_get_response.valueLen,
+                            *answerBuffer,handle->registeredMR[handle->numRegistered-1]->lkey,
                             gotten_packet->rndv_get_response.remote_address
                             ,gotten_packet->rndv_get_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
@@ -656,7 +657,9 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                     handle->numRegistered = handle->numRegistered + 1;
                     printf("mem registered, valueLen = %d\n",valueLen);
-                    pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen - 100,handle->registeredMR[handle->numRegistered-1]->addr,
+                    pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen,
+                            handle->registeredMR[handle->numRegistered-1]->addr,
+                            handle->registeredMR[handle->numRegistered-1]->lkey,
                             gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
@@ -700,7 +703,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
         printf("send %s\n",set_packet->eager_set_request.key_and_value);
         printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
         printf("packet type is %d\n",set_packet->type);
-        pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
+        pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, 0, 0, 0); /* Sends the packet to the server */
         printf("packet sent\n");
         return pp_wait_completions(kv_handle, 2,NULL,NULL,0); /* await EAGER_SET_REQUEST completion and EAGER_SET_RESPONSE */
     }
@@ -714,7 +717,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     set_packet->rndv_set_request.keyLen = strlen(key) + 1;
     set_packet->rndv_set_request.valueLen = strlen(value) + 1;
     memcpy(set_packet->rndv_set_request.key,key,strlen(key) + 1);
-    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */    
+    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL,0, 0, 0); /* Sends the packet to the server */    
     
     return (pp_wait_completions(kv_handle, 2,NULL,value,strlen(value)+1));//sent value. wait for RD_SET_RESPONSE and RDMA_WRITE the value
     /*
@@ -745,7 +748,7 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
     printf("send %s\n",set_packet->eager_get_request.key);
     printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
     printf("packet type is %d\n",set_packet->type);
-    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, NULL, 0); /* Sends the packet to the server */
+    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL,0, 0, 0); /* Sends the packet to the server */
     printf("packet sent\n");
     return pp_wait_completions(kv_handle, 2,value,NULL,0); /* await EAGER_GET_REQUEST completion, and EAGER_GET_RESPONSE answer */
     
