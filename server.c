@@ -661,8 +661,8 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             else //need to respond with a rndv_get_response
             {
                 printf("oversize get, value is of size %d\n",handle->valueLen[i]);
-                sleep(3);
-                printf("value is: %s\n",handle->values[i]);
+                //sleep(3);
+                //printf("value is: %s\n",handle->values[i]);
                 response_packet->type = RENDEZVOUS_GET_RESPONSE;
                 response_size = sizeof(struct packet);
                 if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
@@ -855,8 +855,8 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 	
 	if (response_size) {
 		pp_post_send(handle->ctx, IBV_WR_SEND, response_size, NULL, NULL, 0);
-        sleep(3);
-        printf("server: buffer has value: %s\n",handle->values[i]);
+        //sleep(3);
+        //printf("server: buffer has value: %s\n",handle->values[i]);
     }
     
 }

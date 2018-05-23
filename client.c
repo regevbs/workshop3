@@ -648,7 +648,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                             gotten_packet->rndv_get_response.remote_address
                             ,gotten_packet->rndv_get_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
-                    printf("RDMA recieved: %s\n",*answerBuffer);
+                    printf("RDMA recieved\n");
                 }
                 else if(gotten_packet->type == RENDEZVOUS_SET_RESPONSE)
                 {
@@ -666,7 +666,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                             gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
-                    printf("RDMA sent: %s\n",handle->registeredMR[handle->numRegistered-1]->addr);
+                    printf("RDMA sent\n");//handle->registeredMR[handle->numRegistered-1]->addr);
                 }
                 pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
@@ -939,11 +939,12 @@ int main(int argc, char *argv[])
     memset(send_buffer, 'y', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "333", send_buffer));
     assert(0 == get(handle, "1", &recv_buffer));
+    printf("buffer len: \nsend: %d\nrecv: %d\n",strlen(send_buffer),strlen(recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     
     ///////////////////////////
-    sleep(10);
+    //sleep(10);
     printf("client success@#!@@\n");
     
     ibv_free_device_list(dev_list);
