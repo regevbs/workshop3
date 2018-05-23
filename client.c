@@ -637,6 +637,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                 else if(gotten_packet->type == RENDEZVOUS_GET_RESPONSE)
                 {
                     printf("gotten rndv get response\n");
+                    *answerBuffer = malloc(gotten_packet->rndv_get_response.valueLen * sizeof(char));
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd, *answerBuffer,
                                                     gotten_packet->rndv_get_response.valueLen, IBV_ACCESS_LOCAL_WRITE |
@@ -932,6 +933,7 @@ int main(int argc, char *argv[])
     release(recv_buffer);
 
     /* Test large size */
+    //recv_buffer = (char*) malloc(MAX_TEST_SIZE);
     memset(send_buffer, 'x', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "1", send_buffer));
     memset(send_buffer, 'y', MAX_TEST_SIZE - 1);
