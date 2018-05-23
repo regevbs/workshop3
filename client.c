@@ -446,7 +446,7 @@ static struct pingpong_context *pp_init_ctx(struct ibv_device *ib_dev, int size,
 			.qp_state        = IBV_QPS_INIT,
 			.pkey_index      = 0,
 			.port_num        = port,
-			.qp_access_flags = 0
+			.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
 		};
 
 		if (ibv_modify_qp((*ctx).qp[i], &attr2,
