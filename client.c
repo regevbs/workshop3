@@ -936,11 +936,11 @@ int main(int argc, char *argv[])
     //recv_buffer = (char*) malloc(MAX_TEST_SIZE);
     memset(send_buffer, 'x', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "1", send_buffer));
-    memset(send_buffer, 'y', MAX_TEST_SIZE - 1);
+    //memset(send_buffer, 'y', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "333", send_buffer));
     assert(0 == get(handle, "1", &recv_buffer));
-    printf("buffer len: \nsend: %d\nrecv: %d\n",strlen(send_buffer),strlen(recv_buffer));
-    printf("send: %s\nrecv: %s\n",send_buffer,recv_buffer);
+    //printf("buffer len: \nsend: %d\nrecv: %d\n",strlen(send_buffer),strlen(recv_buffer));
+    //printf("send: %s\nrecv: %s\n",send_buffer,recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     
