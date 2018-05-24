@@ -27,7 +27,6 @@
 #define EAGER_PROTOCOL_LIMIT (1 << 12) /* 4KB limit */
 #define MAX_TEST_SIZE (10 * EAGER_PROTOCOL_LIMIT)
 #define TEST_LOCATION "~/www/"
-#define NUM_SOCKETS 1
 #define MAX_SERVER_ENTRIES 1000
 typedef int bool;
 #define true 1
@@ -140,7 +139,7 @@ struct pingpong_context {
 		struct ibv_cq		*cq;
 		struct ibv_cq_ex	*cq_ex;
 	} cq_s;
-	struct ibv_qp		*qp[NUM_SOCKETS]; //this is the queue pair array we work with
+	struct ibv_qp		*qp; //this is the queue pair array we work with
 	char			*buf;
 	int			 size;
 	int			 send_flags;
@@ -344,36 +343,35 @@ static struct pingpong_dest *pp_server_exch_dest(struct pingpong_context *ctx,
 		fprintf(stderr, "accept() failed\n");
 		return NULL;
 	}
-    rem_dest = malloc((sizeof *rem_dest) * NUM_SOCKETS);
+    rem_dest = malloc((sizeof *rem_dest));
 	if (!rem_dest)
 		goto out;
-    for (int i = 0; i < NUM_SOCKETS; i = i+1)
-    {//
-        n = read(connfd, msg, sizeof msg);
-        if (n != sizeof msg) {
-            perror("server read");
-            fprintf(stderr, "%d/%d: Couldn't read remote address\n", n, (int) sizeof msg);
-            goto out;
-        }
-
-	
-
-        sscanf(msg, "%x:%x:%x:%s", &rem_dest[i].lid, &rem_dest[i].qpn,
-                                &rem_dest[i].psn, gid);
-        wire_gid_to_gid(gid, &rem_dest[i].gid);
-
-
-        gid_to_wire_gid(&my_dest->gid, gid);
-        sprintf(msg, "%04x:%06x:%06x:%s", my_dest[i].lid, my_dest[i].qpn,
-                                my_dest[i].psn, gid);
-        if (write(connfd, msg, sizeof msg) != sizeof msg ||
-            read(connfd, msg, sizeof msg) != sizeof "done") {
-            fprintf(stderr, "Couldn't send/recv local address\n");
-            free(rem_dest);
-            rem_dest = NULL;
-            goto out;
-        }
+  
+    n = read(connfd, msg, sizeof msg);
+    if (n != sizeof msg) {
+        perror("server read");
+        fprintf(stderr, "%d/%d: Couldn't read remote address\n", n, (int) sizeof msg);
+        goto out;
     }
+
+
+
+    sscanf(msg, "%x:%x:%x:%s", &rem_dest.lid, &rem_dest.qpn,
+                            &rem_dest.psn, gid);
+    wire_gid_to_gid(gid, &rem_dest.gid);
+
+
+    gid_to_wire_gid(&my_dest->gid, gid);
+    sprintf(msg, "%04x:%06x:%06x:%s", my_dest.lid, my_dest.qpn,
+                            my_dest.psn, gid);
+    if (write(connfd, msg, sizeof msg) != sizeof msg ||
+        read(connfd, msg, sizeof msg) != sizeof "done") {
+        fprintf(stderr, "Couldn't send/recv local address\n");
+        free(rem_dest);
+        rem_dest = NULL;
+        goto out;
+    }
+    
 
 out:
 	close(connfd);
@@ -442,56 +440,55 @@ static struct pingpong_context *pp_init_ctx(struct ibv_device *ib_dev, int size,
 		fprintf(stderr, "Couldn't create CQ\n");
 		goto clean_mr;
 	}
-    for (int i = 0 ; i < NUM_SOCKETS; i = i+1) //create NUM_SOCKETS QP's
-	{
-		struct ibv_qp_attr attr;
-		struct ibv_qp_init_attr init_attr = {
-			.send_cq = pp_cq(ctx),
-			.recv_cq = pp_cq(ctx),
-			.cap     = {
-				.max_send_wr  = 1,
-				.max_recv_wr  = rx_depth,
-				.max_send_sge = 1,
-				.max_recv_sge = 1
-			},
-			.qp_type = IBV_QPT_RC
-		};
+    
+    struct ibv_qp_attr attr;
+    struct ibv_qp_init_attr init_attr = {
+        .send_cq = pp_cq(ctx),
+        .recv_cq = pp_cq(ctx),
+        .cap     = {
+            .max_send_wr  = 1,
+            .max_recv_wr  = rx_depth,
+            .max_send_sge = 1,
+            .max_recv_sge = 1
+        },
+        .qp_type = IBV_QPT_RC
+    };
 
-		((*ctx).qp[i]) = ibv_create_qp(ctx->pd, &init_attr);////////////
-		if (!((*ctx).qp[i]))  {
-			fprintf(stderr, "Couldn't create QP\n");
-			goto clean_cq;
-		}
+    ((*ctx).qp) = ibv_create_qp(ctx->pd, &init_attr);////////////
+    if (!((*ctx).qp))  {
+        fprintf(stderr, "Couldn't create QP\n");
+        goto clean_cq;
+    }
 
-		ibv_query_qp(((*ctx).qp[i]), &attr, IBV_QP_CAP, &init_attr);
-		if (init_attr.cap.max_inline_data >= size) {
-			ctx->send_flags |= IBV_SEND_INLINE;
-		}
+    ibv_query_qp(((*ctx).qp), &attr, IBV_QP_CAP, &init_attr);
+    if (init_attr.cap.max_inline_data >= size) {
+        ctx->send_flags |= IBV_SEND_INLINE;
+    }
+
+
+
+    struct ibv_qp_attr attr2 = {
+        .qp_state        = IBV_QPS_INIT,
+        .pkey_index      = 0,
+        .port_num        = port,
+        .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
+    };
+
+    if (ibv_modify_qp((*ctx).qp, &attr2,
+              IBV_QP_STATE              |
+              IBV_QP_PKEY_INDEX         |
+              IBV_QP_PORT               |
+              IBV_QP_ACCESS_FLAGS)) {
+        fprintf(stderr, "Failed to modify QP to INIT\n");
+        goto clean_qp;
+    }
 	
-
-	
-		struct ibv_qp_attr attr2 = {
-			.qp_state        = IBV_QPS_INIT,
-			.pkey_index      = 0,
-			.port_num        = port,
-			.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
-		};
-
-		if (ibv_modify_qp((*ctx).qp[i], &attr2,
-				  IBV_QP_STATE              |
-				  IBV_QP_PKEY_INDEX         |
-				  IBV_QP_PORT               |
-				  IBV_QP_ACCESS_FLAGS)) {
-			fprintf(stderr, "Failed to modify QP to INIT\n");
-			goto clean_qp;
-		}
-	}
 
 	return ctx;
 
 clean_qp:
-    for (int k = 0 ; k < NUM_SOCKETS; k = k+1)
-        ibv_destroy_qp((*ctx).qp[k]);
+    
+    ibv_destroy_qp((*ctx).qp);
 
 clean_cq:
 	ibv_destroy_cq(pp_cq(ctx));
@@ -525,11 +522,11 @@ clean_ctx:
 
 static int pp_close_ctx(struct pingpong_context *ctx)
 {
-    for (int k = 0 ; k < NUM_SOCKETS; k = k+1)
-        if ( ibv_destroy_qp((*ctx).qp[k])) {
-            fprintf(stderr, "Couldn't destroy QP\n");
-            return 1;
-        }
+    
+    if ( ibv_destroy_qp((*ctx).qp)) {
+        fprintf(stderr, "Couldn't destroy QP\n");
+        return 1;
+    }
 
 	if (ibv_destroy_cq(pp_cq(ctx))) {
 		fprintf(stderr, "Couldn't destroy CQ\n");
@@ -585,7 +582,7 @@ static int pp_post_recv(struct pingpong_context *ctx, int n)
 	int i;
 
 	for (i = 0; i < n; ++i)
-		if (ibv_post_recv((*ctx).qp[qp_num], &wr, &bad_wr))
+		if (ibv_post_recv((*ctx).qp, &wr, &bad_wr))
 			break;
 
 	return i;
@@ -612,7 +609,7 @@ static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode,
 		wr.wr.rdma.remote_addr = (uintptr_t) remote_ptr;
 		wr.wr.rdma.rkey = remote_key;
 	}
-    return ibv_post_send((*ctx).qp[0], &wr, &bad_wr);
+    return ibv_post_send((*ctx).qp, &wr, &bad_wr);
 	//return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 ////////////////
@@ -627,17 +624,17 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
     struct packet *response_packet = (struct packet*)ctx->buf;
 	bool indexFound = false;
     int i=0;
-    printf("server got packet\ntype = %d\n",packet->type);
+    //printf("server got packet\ntype = %d\n",packet->type);
     switch (packet->type) {
 	/* Only handle packets relevant to the server here - client will handle inside get/set() calls */
     case EAGER_GET_REQUEST:/* TODO (10LOC): handle a short GET() on the server */
     //find the index of the value, get the value and send it back in a packet
         indexFound = false;
         //int i;
-        printf("key recieved: %s\n",packet->eager_get_request.key);
+        //printf("key recieved: %s\n",packet->eager_get_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
-            printf("comparing: %s with %s\n",(handle->keys)[i], packet->eager_get_request.key);
+            //printf("comparing: %s with %s\n",(handle->keys)[i], packet->eager_get_request.key);
             if(strcmp((handle->keys)[i],packet->eager_get_request.key) == 0) //means we found the key
             {
                 indexFound = true;
@@ -648,7 +645,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         memset((handle->ctx)->buf,0,(handle->ctx)->size); //TODO make sure buffer is not needed anymore
         if(indexFound)
         {
-            printf("index found! sending reply\n");
+            //printf("index found! sending reply\n");
             response_packet->type = EAGER_GET_RESPONSE;
             //response_size = sizeof(struct packet) + strlen((handle->values)[i])  + 1;
             response_size = sizeof(struct packet) + handle->valueLen[i] + 1;
@@ -660,7 +657,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             }
             else //need to respond with a rndv_get_response
             {
-                printf("oversize get, value is of size %d\n",handle->valueLen[i]);
+                //printf("oversize get, value is of size %d\n",handle->valueLen[i]);
                 //sleep(3);
                 //printf("value is: %s\n",handle->values[i]);
                 response_packet->type = RENDEZVOUS_GET_RESPONSE;
@@ -683,8 +680,8 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         else
         {
-            printf("index not found T_T\n");
-            char toSend[] = "Loser";
+            //printf("index not found T_T\n");
+            char toSend[] = "";
             response_packet->type = EAGER_GET_RESPONSE;
             response_size = sizeof(struct packet) + strlen(toSend)  + 1;
             response_packet->eager_get_response.valueLen = strlen(toSend)  + 1;
@@ -699,7 +696,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
     //check if the key exists, if it does replace value, if it doesn't make a new entry
         indexFound = false;
         //int i;
-        printf("set string: %s\n",packet->eager_set_request.key_and_value);
+        //printf("set string: %s\n",packet->eager_set_request.key_and_value);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
             if(strcmp((handle->keys)[i],packet->eager_set_request.key_and_value) == 0) //means we found the key
@@ -718,7 +715,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         else
         {
-            printf("no index found\n");
+            //printf("no index found\n");
             (handle->keyLen)[i] = packet->eager_set_request.keyLen;
             (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
             (handle->valueLen)[i] = packet->eager_set_request.valueLen;
@@ -726,7 +723,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             handle->entryLen = handle->entryLen + 1;
             memcpy((handle->values)[i],&(packet->eager_set_request.key_and_value[packet->eager_set_request.keyLen]),packet->eager_set_request.valueLen);
             memcpy((handle->keys)[i],packet->eager_set_request.key_and_value,packet->eager_set_request.keyLen);
-            printf("key inserted = %s\nvalue inserted = %s\n",(handle->keys)[i],(handle->values)[i]);
+            //printf("key inserted = %s\nvalue inserted = %s\n",(handle->keys)[i],(handle->values)[i]);
         }
         response_packet->type = EAGER_SET_RESPONSE;
         response_size = sizeof(struct packet);
@@ -735,10 +732,10 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
          //find the index of the value, get the value and send it back in a packet
         indexFound = false;
         //int i;
-        printf("key recieved: %s\n",packet->rndv_get_request.key);
+        //printf("key recieved: %s\n",packet->rndv_get_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
-            printf("comparing: %s with %s\n",(handle->keys)[i], packet->rndv_get_request.key);
+           // printf("comparing: %s with %s\n",(handle->keys)[i], packet->rndv_get_request.key);
             if(strcmp((handle->keys)[i],packet->rndv_get_request.key) == 0) //means we found the key
             {
                 indexFound = true;
@@ -747,7 +744,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         if(indexFound)
         {
-            printf("index found! sending reply\n");
+           // printf("index found! sending reply\n");
             response_packet->type = RENDEZVOUS_GET_RESPONSE;
             response_size = sizeof(struct packet);
             if(handle->remote_addresses[i] == 0 && handle->rkeyValue[i] == 0)
@@ -766,7 +763,7 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         else
         {
-            printf("index not found T_T\n");
+            //printf("index not found T_T\n");
             response_packet->type = RENDEZVOUS_GET_RESPONSE;
             response_size = sizeof(struct packet);
             response_packet->rndv_get_response.remote_address = 0;
@@ -780,8 +777,8 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         response_packet->type = RENDEZVOUS_SET_RESPONSE;
         response_size = sizeof(struct packet);
         //int i;
-        printf("REDN SET REQUEST$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-        printf("set string: %s\n",packet->rndv_set_request.key);
+        //printf("REDN SET REQUEST$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+        //printf("set string: %s\n",packet->rndv_set_request.key);
         for ( i = 0; i < handle->entryLen; i = i +1 )
         {
             if(strcmp((handle->keys)[i],packet->rndv_set_request.key) == 0) //means we found the key
@@ -792,39 +789,39 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
         }
         if(indexFound)
         {
-            printf("index found at rdv\n");
+           // printf("index found at rdv\n");
             kv_release((handle->values)[i]);//TODO check if release is the func we want
             (handle->valueLen)[i] = packet->rndv_set_request.valueLen;
             //TODO dereg the older MR that was here and zero all its attributes
             if(handle->remote_addresses[i] != 0 && handle->rkeyValue[i] != 0)
             {
-                printf("deregging\n");
+            //    printf("deregging\n");
                 ibv_dereg_mr(handle->registeredMR[i]);
                 handle->remote_addresses[i] = 0;
                 handle->rkeyValue[i] = 0;
-                printf("dereg done\n");
+             //   printf("dereg done\n");
                 
             }
             free(handle->values[i]);
-            printf("free done\n");
+           // printf("free done\n");
             //TODO reg a new MR here.
-            printf("server regs memory of size: %d\n@@@@@@@@@@@$$$$$$$$$$$%%%%%%%%\n",(handle->valueLen)[i]);
+           // printf("server regs memory of size: %d\n@@@@@@@@@@@$$$$$$$$$$$%%%%%%%%\n",(handle->valueLen)[i]);
             (handle->values)[i] = (char*) malloc((handle->valueLen)[i]); //this is the address for the new MR.
             handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
                                                     handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
             handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
             handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
-            printf("server: r_add = %d\nr_key = %d\n",handle->remote_addresses[i],handle->rkeyValue[i]);
+           // printf("server: r_add = %d\nr_key = %d\n",handle->remote_addresses[i],handle->rkeyValue[i]);
             //TODO create the packet to return for the client to write into this MR.
-            printf("mem re - registered\n");
+            //printf("mem re - registered\n");
             response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
            
         }
         else
         {
-            printf("no index found\n");
+            //printf("no index found\n");
             (handle->keyLen)[i] = packet->rndv_set_request.keyLen;
             (handle->keys)[i] = (char*) malloc((handle->keyLen)[i]);
             (handle->valueLen)[i] = packet->rndv_set_request.valueLen;
@@ -838,13 +835,13 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
             handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
             handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
             //TODO create the packet to return for the client to write into this MR.
-            printf("server: r_add = %d\nr_key = %d\n",handle->remote_addresses[i],handle->rkeyValue[i]);
+           // printf("server: r_add = %d\nr_key = %d\n",handle->remote_addresses[i],handle->rkeyValue[i]);
 
             response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
 
         }
-        printf("responding REDN_SET_RESPONSE%%%%%%%%%%%%%%%%%%%%%%%%%\n");
+       // printf("responding REDN_SET_RESPONSE%%%%%%%%%%%%%%%%%%%%%%%%%\n");
         break;
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
@@ -883,7 +880,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 		} while (ne < 1);
         //printf("pass 3\n");
 		for (i = 0; i < ne; ++i) {
-            printf("server is onto sumthin\n");
+            //printf("server is onto sumthin\n");
 			if (wc[i].status != IBV_WC_SUCCESS) {
 				fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",
 					ibv_wc_status_str(wc[i].status),
@@ -893,7 +890,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 
 			switch ((int) wc[i].wr_id) {
 			case PINGPONG_SEND_WRID:
-                printf("server got send completion\n");
+               // printf("server got send completion\n");
                 scnt = scnt + 1;
 				break;
 
@@ -924,26 +921,18 @@ int main(int argc, char *argv[])
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
 	struct pingpong_context *context; //= (struct pingpong_context*) malloc(sizeof(struct pingpong_context));
-	struct pingpong_dest    my_dest[NUM_SOCKETS];
+	struct pingpong_dest    my_dest;
 	struct pingpong_dest    *rem_dest;
 	struct timeval           timer;
 	char                    *ib_devname = NULL;
 	unsigned int             port = 18515;
 	int                      ib_port = 1;
-	unsigned int             messageSize[NUM_SOCKETS];
-    unsigned int             numMessages[NUM_SOCKETS];
     page_size = sysconf(_SC_PAGESIZE); //checks the page size used by the system
-    for (int i=0 ;i< NUM_SOCKETS; i = i+1)
-    {
-        messageSize[i] = page_size; //start with page_size messages
-        numMessages[i] = 10000; //start with 10000 iters per size of message
-    }
 	enum ibv_mtu		 mtu = IBV_MTU_1024;
 	unsigned int             rx_depth = 50;
 	
 	int                      use_event = 0;
-	int                      routs[NUM_SOCKETS];
-    int                      sendCount[NUM_SOCKETS];
+	int                      routs;
 	int                      num_cq_events;//only one completion queue
 	int                      sl = 0;
 	int			 gidx = -1;
@@ -985,29 +974,28 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Couldn't get port info\n");
             return 1;
         }
-    for ( int k = 0; k < NUM_SOCKETS ; k = k+1)
-    {
+    
         //Prepare to recieve messages. fill the recieve request queue of QP k
-        routs[k] = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
-            if (routs[k] < context->rx_depth) {
-                fprintf(stderr, "Couldn't post receive (%d)\n", routs[k]);
+        routs = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
+            if (routs < context->rx_depth) {
+                fprintf(stderr, "Couldn't post receive (%d)\n", routs);
                 return 1;
             }
         //set my_dest for every QP, getting ready to connect them.
-        my_dest[k].lid = context->portinfo.lid; //assigns lid to my dest
+        my_dest.lid = context->portinfo.lid; //assigns lid to my dest
         if (context->portinfo.link_layer != IBV_LINK_LAYER_ETHERNET &&
-                                !my_dest[k].lid) {
+                                !my_dest.lid) {
             fprintf(stderr, "Couldn't get local LID\n");
             return 1;
         }
         //set the gid to 0, we are in the same subnet.
-        memset(&my_dest[k].gid, 0, sizeof my_dest[k].gid); //zero the gid, we send in the same subnet
-        my_dest[k].qpn = ((*context).qp[k])->qp_num; //gets the qp number
-        my_dest[k].psn = lrand48() & 0xffffff; //randomizes the packet serial number
-        inet_ntop(AF_INET6, &my_dest[k].gid, gid, sizeof gid); //changes gid to text form
+        memset(&my_dest.gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
+        my_dest.qpn = ((*context).qp)->qp_num; //gets the qp number
+        my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
+        inet_ntop(AF_INET6, &my_dest.gid, gid, sizeof gid); //changes gid to text form
         //printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
          //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
-    }
+    
     //Get the remote dest for my QPs
     
     rem_dest = pp_server_exch_dest(context, ib_port, mtu, port, sl, //if youre a server - exchange data with client
@@ -1017,20 +1005,18 @@ int main(int argc, char *argv[])
             return 1; 
     
 
-    for(int k = 0 ; k < NUM_SOCKETS; k = k + 1)
-    {
-      inet_ntop(AF_INET6, &rem_dest[k].gid, gid, sizeof gid);
+    
+      inet_ntop(AF_INET6, &rem_dest.gid, gid, sizeof gid);
       //printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
             // rem_dest[k].lid, rem_dest[k].qpn, rem_dest[k].psn, gid);
-    }      
+         
     //now connect all the QPs to the client
-    for( int k = 0 ; k < NUM_SOCKETS; k = k+1)
-    {
-        if (pp_connect_ctx(context, ib_port, my_dest[k].psn, mtu, sl, &rem_dest[k],
-                        gidx,k))
+    
+        if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, &rem_dest,
+                        gidx))
                 return 1; //connect to the server
 
-    }
+    
     //////////////////////////////////////////////
     //do server work
     /////////////////////
@@ -1042,7 +1028,7 @@ int main(int argc, char *argv[])
     
     
     /////////////////////
-    printf("server waiting for completions to respond\n");
+    //printf("server waiting for completions to respond\n");
     while (0 <= pp_wait_completions(server_handle, 1));//TODO will this ever exit?
     
     //////////////////////////////////////////////
