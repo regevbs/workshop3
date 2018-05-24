@@ -541,10 +541,8 @@ static int pp_close_ctx(struct pingpong_context *ctx)
 	if (ctx->dm) {
 		
 	}
-    sleep(1);
+    
 	if (ibv_dealloc_pd(ctx->pd)) {
-        perror("pdFail\n");
-		fprintf(stderr, "Couldn't deallocate PDser\n");
 		return 1;
 	}
 
