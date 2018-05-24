@@ -886,10 +886,10 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 int kv_close(struct kv_handle *kv_handle)
 {
     terminateServer(kv_handle);
-    for(int i = 0; i < handle->numRegistered; i = i + 1)
+    for(int i = 0; i < kv_handle->numRegistered; i = i + 1)
     {
-        void * memory = handle->registeredMR[i]->addr;
-        ibv_dereg_mr(handle->registeredMR[i]);
+        void * memory = kv_handle->registeredMR[i]->addr;
+        ibv_dereg_mr(kv_handle->registeredMR[i]);
         free(memory);
     }
     
