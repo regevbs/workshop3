@@ -893,7 +893,7 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 
 int main(int argc, char *argv[])
 {
-    struct kv_server_address * server;
+    struct kv_server_address * server = malloc(sizeof(struct kv_server_address));
     struct kv_handle * handle = malloc(sizeof(struct kv_handle));
     
 
@@ -910,7 +910,8 @@ int main(int argc, char *argv[])
     }
     int portNum = atoi(argv[numArgs - 1]);
     int port = portNum;
-    servername = strdupa(argv[1]);
+    char * servername = strdupa(argv[1]);
+    printf("ha\n");
     server->servername = servername;
     server->port = (short) port;
     printf("weirdstuff\n");
