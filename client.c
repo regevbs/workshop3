@@ -760,10 +760,6 @@ void kv_release(char *value)
     free(value);
 }
 
-int kv_close(struct kv_handle *kv_handle)
-{
-    return pp_close_ctx(kv_handle->ctx);
-}
 
 #ifdef EX3
 #define my_open  kv_open
@@ -880,22 +876,23 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
     //Do client work
     
     kv_handle->ctx = context;
-    //ibv_free_device_list(dev_list);
-    //free(rem_dest);
+    ibv_free_device_list(dev_list);
+    free(rem_dest);
     
     return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
 }
 
 
+int kv_close(struct kv_handle *kv_handle)
+{
+    terminateServer(kv_handle);
+    return pp_close_ctx(kv_handle->ctx);
+}
 int main(int argc, char *argv[])
 {
     struct kv_server_address * server = malloc(sizeof(struct kv_server_address));
     struct kv_handle * handle = malloc(sizeof(struct kv_handle));
     
-
-    //////////////
-    
-    //////////////
     //get input for the server ip and port
     //int portNum;
     int numArgs = 3;
@@ -910,7 +907,7 @@ int main(int argc, char *argv[])
     server->servername = servername;
     server->port = (short) port;
     kv_open(server,handle);
-  
+    free(server);
     char send_buffer[MAX_TEST_SIZE] = {0};
     char *recv_buffer;
     /* Test small size */
@@ -944,10 +941,9 @@ int main(int argc, char *argv[])
     
     
     printf("client success@#!@@\n");
-    terminateServer(handle);
     
-    //my_close(handle);
-    //free(handle);
+    my_close(handle);
+    free(handle);
     return 0;
 }
     
