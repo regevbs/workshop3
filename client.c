@@ -217,7 +217,7 @@ static struct ibv_cq *pp_cq(struct pingpong_context *ctx)
 //connect qp_num_to_connect in context to this pingpong dest.
 static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 			  enum ibv_mtu mtu, int sl,
-			  struct pingpong_dest *dest, int sgid_idx,int qp_num_to_connect)
+			  struct pingpong_dest *dest, int sgid_idx)
 {
 	struct ibv_qp_attr attr = {
 		.qp_state		= IBV_QPS_RTR,
@@ -259,7 +259,7 @@ static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 	attr.rnr_retry	    = 7;
 	attr.sq_psn	    = my_psn;
 	attr.max_rd_atomic  = 1;
-	if (ibv_modify_qp(((*ctx).qp[qp_num_to_connect]), &attr,
+	if (ibv_modify_qp(((*ctx).qp), &attr,
 			  IBV_QP_STATE              |
 			  IBV_QP_TIMEOUT            |
 			  IBV_QP_RETRY_CNT          |
@@ -860,7 +860,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     //set the gid to 0, we are in the same subnet.
-    memset(&my_dest->gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
+    memset(&my_dest.gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
     my_dest.qpn = ((*context).qp)->qp_num; //gets the qp number
     my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
     inet_ntop(AF_INET6, &my_dest.gid, gid, sizeof gid); //changes gid to text form
