@@ -46,7 +46,7 @@ enum packet_type {
     RENDEZVOUS_GET_RESPONSE,
     RENDEZVOUS_SET_REQUEST,
     RENDEZVOUS_SET_RESPONSE,
-
+    TERMINATE,
 #ifdef EX4
     FIND,
     LOCATION,
@@ -846,6 +846,9 @@ void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 #ifdef EX4
     case FIND: /* TODO (2LOC): use some hash function */
 #endif
+    case TERMINATE:
+        return -10;
+        break;
     default:
         break;
     }
@@ -895,7 +898,12 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
 				break;
 
 			case PINGPONG_RECV_WRID:
-				handle_server_packets_only(handle, (struct packet*)ctx->buf);
+                int retVal;
+				retVal = handle_server_packets_only(handle, (struct packet*)ctx->buf);
+                if(retVal == -10)
+                {
+                    return -10;
+                }
 				pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
 				break;

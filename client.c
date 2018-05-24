@@ -43,7 +43,7 @@ enum packet_type {
     RENDEZVOUS_GET_RESPONSE,
     RENDEZVOUS_SET_REQUEST,
     RENDEZVOUS_SET_RESPONSE,
-
+    TERMINATE,
 #ifdef EX4
     FIND,
     LOCATION,
@@ -775,7 +775,15 @@ int kv_close(struct kv_handle *kv_handle)
 
 
 
+void terminateServer(kv_handle * handle)
+{
+    struct pingpong_context *ctx = handle->ctx;
+    struct packet *set_packet = (struct packet*)ctx->buf;
 
+    unsigned packet_size = sizeof(struct packet);
+    set_packet->type = TERMINATE;
+    pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL,0, 0, 0); /* Sends the packet to the server */
+}
 
 //////////////////////
 
@@ -922,7 +930,7 @@ int main(int argc, char *argv[])
     
     
     printf("client success@#!@@\n");
-    
+    terminateServer(handle);
     ibv_free_device_list(dev_list);
     free(rem_dest);
     //my_close(handle);
