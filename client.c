@@ -886,6 +886,13 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 int kv_close(struct kv_handle *kv_handle)
 {
     terminateServer(kv_handle);
+    for(int i = 0; i < handle->numRegistered; i = i + 1)
+    {
+        void * memory = handle->registeredMR[i]->addr;
+        ibv_dereg_mr(handle->registeredMR[i]);
+        free(memory);
+    }
+    
     return pp_close_ctx(kv_handle->ctx);
 }
 int main(int argc, char *argv[])

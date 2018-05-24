@@ -668,6 +668,7 @@ int handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
                     handle->registeredMR[i] = ibv_reg_mr(ctx->pd, handle->values[i],
                                                         handle->valueLen[i], IBV_ACCESS_LOCAL_WRITE |
                                                         IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
+                    handle->numRegistered = handle->numRegistered + 1;
                     handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
                     handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
                 }
@@ -755,6 +756,7 @@ int handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                 handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
                 handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+                handle->numRegistered = handle->numRegistered + 1;
             }
             response_packet->rndv_get_response.remote_address = handle->remote_addresses[i];
             response_packet->rndv_get_response.rkey = handle->rkeyValue[i];
@@ -834,6 +836,7 @@ int handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
             handle->remote_addresses[i] = (uint64_t) handle->registeredMR[i]->addr;
             handle->rkeyValue[i] = (uint32_t) handle->registeredMR[i]->rkey;
+            handle->numRegistered = handle->numRegistered + 1;
             //TODO create the packet to return for the client to write into this MR.
            // printf("server: r_add = %d\nr_key = %d\n",handle->remote_addresses[i],handle->rkeyValue[i]);
 
@@ -1038,7 +1041,21 @@ int main(int argc, char *argv[])
     /////////////////////
     //printf("server waiting for completions to respond\n");
     while (0 <= pp_wait_completions(server_handle, 1));//TODO will this ever exit?
+    //clean after us
+    for(int i = 0; i < server_handle->numRegistered; i = i + 1)
+    {
+        //void * memory = server_handle->registeredMR[i]->addr;
+        ibv_dereg_mr(server_handle->registeredMR[i]);
+        //free(memory);
+    }
+    for(int i = 0; i< server_handle->entryLen; i = i + 1)
+    {
+        free(server_handle->keys[i]);
+        free(server_handle->values[i]);
+    }
     
+    pp_close_ctx(server_handle->ctx);
+
     //////////////////////////////////////////////
     ibv_free_device_list(dev_list);
     free(rem_dest);
