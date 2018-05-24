@@ -913,7 +913,10 @@ int main(int argc, char *argv[])
     servername = strdupa(argv[1]);
     server->servername = servername;
     server->port = (short) port;
-    kv_open(server,handle);
+    if(kv_open(server,handle))
+    {
+        return 0;
+    }
     free(server);
     char send_buffer[MAX_TEST_SIZE] = {0};
     char *recv_buffer;
@@ -946,8 +949,6 @@ int main(int argc, char *argv[])
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     
-    
-    printf("client success@#!@@\n");
     
     my_close(handle);
     free(handle);
