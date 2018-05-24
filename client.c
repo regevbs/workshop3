@@ -788,6 +788,7 @@ void terminateServer(struct kv_handle * handle)
 //////////////////////
 int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 {
+    printf("weird2\n");
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
 	struct pingpong_context *context = malloc(sizeof(struct pingpong_context));
@@ -912,7 +913,7 @@ int main(int argc, char *argv[])
     servername = strdupa(argv[1]);
     server->servername = servername;
     server->port = (short) port;
-    
+    printf("weirdstuff\n");
     kv_open(server,handle);
   
     char send_buffer[MAX_TEST_SIZE] = {0};
