@@ -241,7 +241,7 @@ static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 		attr.ah_attr.grh.dgid = dest->gid;
 		attr.ah_attr.grh.sgid_index = sgid_idx;
 	}
-	if (ibv_modify_qp(((*ctx).qp[qp_num_to_connect]), &attr,
+	if (ibv_modify_qp(((*ctx).qp), &attr,
 			  IBV_QP_STATE              |
 			  IBV_QP_AV                 |
 			  IBV_QP_PATH_MTU           |
@@ -324,9 +324,9 @@ static struct pingpong_dest *pp_client_exch_dest(const char *servername, int por
         if (!rem_dest)
             goto out;
     
-    gid_to_wire_gid(&((my_dest).gid), gid);
-   sprintf(msg, "%04x:%06x:%06x:%s", my_dest.lid, my_dest.qpn,
-                            my_dest.psn, gid);
+    gid_to_wire_gid(&(my_dest->gid), gid);
+   sprintf(msg, "%04x:%06x:%06x:%s", my_dest->lid, my_dest->qpn,
+                            my_dest->psn, gid);
    if (write(sockfd, msg, sizeof msg) != sizeof msg) {
         fprintf(stderr, "Couldn't send local address\n");
         goto out;
@@ -341,9 +341,9 @@ static struct pingpong_dest *pp_client_exch_dest(const char *servername, int por
 //
     
 
-    sscanf(msg, "%x:%x:%x:%s", &rem_dest.lid, &rem_dest.qpn,
-                        &rem_dest.psn, gid);
-    wire_gid_to_gid(gid, &rem_dest.gid);
+    sscanf(msg, "%x:%x:%x:%s", &rem_dest->lid, &rem_dest->qpn,
+                        &rem_dest->psn, gid);
+    wire_gid_to_gid(gid, &rem_dest->gid);
     
 out:
 	close(sockfd);
@@ -552,7 +552,7 @@ static int pp_post_recv(struct pingpong_context *ctx, int n)
 	int i;
 
 	for (i = 0; i < n; ++i)
-		if (ibv_post_recv((*ctx).qp[qp_num], &wr, &bad_wr))
+		if (ibv_post_recv((*ctx).qp, &wr, &bad_wr))
 			break;
 
 	return i;
@@ -581,8 +581,8 @@ static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode,
 		wr.wr.rdma.remote_addr = (uintptr_t) remote_ptr;
 		wr.wr.rdma.rkey = remote_key;
 	}
-    return ibv_post_send((*ctx).qp[0], &wr, &bad_wr);
-	//return ibv_post_send(ctx->qp, &wr, &bad_wr);
+    //return ibv_post_send((*ctx).qp, &wr, &bad_wr);
+	return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
 ////////////////////
@@ -860,27 +860,27 @@ int main(int argc, char *argv[])
         return 1;
     }
     //set the gid to 0, we are in the same subnet.
-    memset(&my_dest.gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
-    my_dest.qpn = ((*context).qp[k])->qp_num; //gets the qp number
-    my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
-    inet_ntop(AF_INET6, &my_dest.gid, gid, sizeof gid); //changes gid to text form
+    memset(&my_dest->gid, 0, sizeof my_dest->gid); //zero the gid, we send in the same subnet
+    my_dest->qpn = ((*context).qp)->qp_num; //gets the qp number
+    my_dest->psn = lrand48() & 0xffffff; //randomizes the packet serial number
+    inet_ntop(AF_INET6, &my_dest->gid, gid, sizeof gid); //changes gid to text form
     //printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
      //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
     
     //Get the remote dest for my QPs
-    rem_dest = pp_client_exch_dest(servername, port, my_dest); //if youre a client - exchange data with server
+    rem_dest = pp_client_exch_dest(servername, port, &my_dest); //if youre a client - exchange data with server
     if (!rem_dest)
             return 1; 
     
 
     
-      inet_ntop(AF_INET6, &rem_dest.gid, gid, sizeof gid);
+      inet_ntop(AF_INET6, &rem_dest->gid, gid, sizeof gid);
       //printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
       //       rem_dest[k].lid, rem_dest[k].qpn, rem_dest[k].psn, gid);
           
     //now connect all the QPs to the server
     
-    if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, &rem_dest,
+    if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, rem_dest,
                     gidx,k))
             return 1; //connect to the server
 
