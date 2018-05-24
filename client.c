@@ -49,7 +49,6 @@ enum packet_type {
     LOCATION,
 #endif
 };
-
 struct packet {
     enum packet_type type; /* What kind of packet/protocol is this */
     union {
@@ -156,6 +155,7 @@ struct kv_handle
 {
     struct pingpong_context * ctx;//context
     struct ibv_mr * registeredMR[MAX_SERVER_ENTRIES];
+    
     int numRegistered;
     int entryLen;
     int * keyLen;
@@ -638,6 +638,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                 {
                     //printf("gotten rndv get response\n");
                     *answerBuffer = malloc(gotten_packet->rndv_get_response.valueLen * sizeof(char));
+                   
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd, *answerBuffer,
                                                     gotten_packet->rndv_get_response.valueLen, IBV_ACCESS_LOCAL_WRITE |
