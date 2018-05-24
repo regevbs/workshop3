@@ -229,7 +229,7 @@ static struct ibv_cq *pp_cq(struct pingpong_context *ctx)
 //connect qp_num_to_connect in context to this pingpong dest.
 static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 			  enum ibv_mtu mtu, int sl,
-			  struct pingpong_dest *dest, int sgid_idx,int qp_num_to_connect)
+			  struct pingpong_dest *dest, int sgid_idx)
 {
 	struct ibv_qp_attr attr = {
 		.qp_state		= IBV_QPS_RTR,
@@ -253,7 +253,7 @@ static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 		attr.ah_attr.grh.dgid = dest->gid;
 		attr.ah_attr.grh.sgid_index = sgid_idx;
 	}
-	if (ibv_modify_qp(((*ctx).qp[qp_num_to_connect]), &attr,
+	if (ibv_modify_qp(((*ctx).qp), &attr,
 			  IBV_QP_STATE              |
 			  IBV_QP_AV                 |
 			  IBV_QP_PATH_MTU           |
@@ -271,7 +271,7 @@ static int pp_connect_ctx(struct pingpong_context *ctx, int port, int my_psn,
 	attr.rnr_retry	    = 7;
 	attr.sq_psn	    = my_psn;
 	attr.max_rd_atomic  = 1;
-	if (ibv_modify_qp(((*ctx).qp[qp_num_to_connect]), &attr,
+	if (ibv_modify_qp(((*ctx).qp), &attr,
 			  IBV_QP_STATE              |
 			  IBV_QP_TIMEOUT            |
 			  IBV_QP_RETRY_CNT          |
@@ -356,14 +356,14 @@ static struct pingpong_dest *pp_server_exch_dest(struct pingpong_context *ctx,
 
 
 
-    sscanf(msg, "%x:%x:%x:%s", &rem_dest.lid, &rem_dest.qpn,
-                            &rem_dest.psn, gid);
-    wire_gid_to_gid(gid, &rem_dest.gid);
+    sscanf(msg, "%x:%x:%x:%s", &rem_dest->lid, &rem_dest->qpn,
+                            &rem_dest->psn, gid);
+    wire_gid_to_gid(gid, &rem_dest->gid);
 
 
     gid_to_wire_gid(&my_dest->gid, gid);
-    sprintf(msg, "%04x:%06x:%06x:%s", my_dest.lid, my_dest.qpn,
-                            my_dest.psn, gid);
+    sprintf(msg, "%04x:%06x:%06x:%s", my_dest->lid, my_dest->qpn,
+                            my_dest->psn, gid);
     if (write(connfd, msg, sizeof msg) != sizeof msg ||
         read(connfd, msg, sizeof msg) != sizeof "done") {
         fprintf(stderr, "Couldn't send/recv local address\n");
@@ -999,7 +999,7 @@ int main(int argc, char *argv[])
     //Get the remote dest for my QPs
     
     rem_dest = pp_server_exch_dest(context, ib_port, mtu, port, sl, //if youre a server - exchange data with client
-                                    my_dest, gidx);
+                                    &my_dest, gidx);
     
     if (!rem_dest)
             return 1; 
