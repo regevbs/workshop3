@@ -860,10 +860,10 @@ int main(int argc, char *argv[])
         return 1;
     }
     //set the gid to 0, we are in the same subnet.
-    memset(&my_dest->gid, 0, sizeof my_dest->gid); //zero the gid, we send in the same subnet
-    my_dest->qpn = ((*context).qp)->qp_num; //gets the qp number
-    my_dest->psn = lrand48() & 0xffffff; //randomizes the packet serial number
-    inet_ntop(AF_INET6, &my_dest->gid, gid, sizeof gid); //changes gid to text form
+    memset(&my_dest->gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
+    my_dest.qpn = ((*context).qp)->qp_num; //gets the qp number
+    my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
+    inet_ntop(AF_INET6, &my_dest.gid, gid, sizeof gid); //changes gid to text form
     //printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
      //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
     
@@ -881,7 +881,7 @@ int main(int argc, char *argv[])
     //now connect all the QPs to the server
     
     if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, rem_dest,
-                    gidx,k))
+                    gidx))
             return 1; //connect to the server
 
     
