@@ -502,7 +502,7 @@ clean_dm:
 		//ibv_free_dm(ctx->dm);
 
 clean_pd:
-	ibv_dealloc_pd(ctx->pd);
+	//ibv_dealloc_pd(ctx->pd);
 
 clean_comp_channel:
 	if (ctx->channel)
