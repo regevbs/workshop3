@@ -1006,13 +1006,13 @@ int main(int argc, char *argv[])
     
 
     
-      inet_ntop(AF_INET6, &rem_dest.gid, gid, sizeof gid);
+      inet_ntop(AF_INET6, &rem_dest->gid, gid, sizeof gid);
       //printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
             // rem_dest[k].lid, rem_dest[k].qpn, rem_dest[k].psn, gid);
          
     //now connect all the QPs to the client
     
-        if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, &rem_dest,
+        if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, rem_dest,
                         gidx))
                 return 1; //connect to the server
 
