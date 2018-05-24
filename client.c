@@ -880,8 +880,9 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
    
     //Do client work
     
-    handle->ctx = context;
-    
+    kv_handle->ctx = context;
+    ibv_free_device_list(dev_list);
+    free(rem_dest);
     
     return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
 }
@@ -904,8 +905,8 @@ int main(int argc, char *argv[])
        fprintf(stderr,usageMessage, argv[0]);
        exit(0);
     }
-    portNum = atoi(argv[numArgs - 1]);
-    port = portNum;
+    int portNum = atoi(argv[numArgs - 1]);
+    int port = portNum;
     servername = strdupa(argv[1]);
     server->servername = servername;
     server->port = (short) port;
@@ -946,8 +947,7 @@ int main(int argc, char *argv[])
     
     printf("client success@#!@@\n");
     terminateServer(handle);
-    ibv_free_device_list(dev_list);
-    free(rem_dest);
+    
     //my_close(handle);
     //free(handle);
     return 0;
