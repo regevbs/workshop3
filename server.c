@@ -179,6 +179,7 @@ struct kv_handle
     int keyLen[MAX_SERVER_ENTRIES];
     int valueLen[MAX_SERVER_ENTRIES];
     struct ibv_mr * registeredMR[MAX_SERVER_ENTRIES];
+    int numRegistered;
     uint32_t rkeyValue[MAX_SERVER_ENTRIES];
     uint64_t remote_addresses[MAX_SERVER_ENTRIES];
     char * keys[MAX_SERVER_ENTRIES];
