@@ -860,6 +860,7 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
      //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
     
     //Get the remote dest for my QPs
+    printf("got here\n");
     rem_dest = pp_client_exch_dest(servername, port, &my_dest); //if youre a client - exchange data with server
     if (!rem_dest)
             return 1; 
