@@ -23,7 +23,6 @@
 #define EAGER_PROTOCOL_LIMIT (1 << 12) /* 4KB limit */
 #define MAX_TEST_SIZE (10 * EAGER_PROTOCOL_LIMIT)
 #define TEST_LOCATION "~/www/"
-#define NUM_SOCKETS 1
 #define MAX_SERVER_ENTRIES 1000
 typedef int bool;
 #define true 1
@@ -133,7 +132,7 @@ struct pingpong_context {
 		struct ibv_cq		*cq;
 		struct ibv_cq_ex	*cq_ex;
 	} cq_s;
-	struct ibv_qp		*qp[NUM_SOCKETS]; //this is the queue pair array we work with
+	struct ibv_qp		*qp; //this is the queue pair array we work with
 	char			*buf;
 	int			 size;
 	int			 send_flags;
@@ -321,32 +320,31 @@ static struct pingpong_dest *pp_client_exch_dest(const char *servername, int por
 		fprintf(stderr, "Couldn't connect to %s:%d\n", servername, port);
 		return NULL;
 	}
-    rem_dest = malloc((sizeof dest) * NUM_SOCKETS);
+    rem_dest = malloc((sizeof dest));
         if (!rem_dest)
             goto out;
-    for (int i = 0; i < NUM_SOCKETS; i = i+1)
-    {//
-        gid_to_wire_gid(&((my_dest[i]).gid), gid);
-       sprintf(msg, "%04x:%06x:%06x:%s", my_dest[i].lid, my_dest[i].qpn,
-                                my_dest[i].psn, gid);
-       if (write(sockfd, msg, sizeof msg) != sizeof msg) {
-            fprintf(stderr, "Couldn't send local address\n");
-            goto out;
-       }
+    
+    gid_to_wire_gid(&((my_dest).gid), gid);
+   sprintf(msg, "%04x:%06x:%06x:%s", my_dest.lid, my_dest.qpn,
+                            my_dest.psn, gid);
+   if (write(sockfd, msg, sizeof msg) != sizeof msg) {
+        fprintf(stderr, "Couldn't send local address\n");
+        goto out;
+   }
 
-        if (read(sockfd, msg, sizeof msg) != sizeof msg ||
-            write(sockfd, "done", sizeof "done") != sizeof "done") {
-            perror("client read/write");
-            fprintf(stderr, "Couldn't read/write remote address\n");
-            goto out;
-        }
-//
-        
-
-        sscanf(msg, "%x:%x:%x:%s", &rem_dest[i].lid, &rem_dest[i].qpn,
-                            &rem_dest[i].psn, gid);
-        wire_gid_to_gid(gid, &rem_dest[i].gid);
+    if (read(sockfd, msg, sizeof msg) != sizeof msg ||
+        write(sockfd, "done", sizeof "done") != sizeof "done") {
+        perror("client read/write");
+        fprintf(stderr, "Couldn't read/write remote address\n");
+        goto out;
     }
+//
+    
+
+    sscanf(msg, "%x:%x:%x:%s", &rem_dest.lid, &rem_dest.qpn,
+                        &rem_dest.psn, gid);
+    wire_gid_to_gid(gid, &rem_dest.gid);
+    
 out:
 	close(sockfd);
 	return rem_dest;
@@ -414,56 +412,55 @@ static struct pingpong_context *pp_init_ctx(struct ibv_device *ib_dev, int size,
 		fprintf(stderr, "Couldn't create CQ\n");
 		goto clean_mr;
 	}
-    for (int i = 0 ; i < NUM_SOCKETS; i = i+1) //create NUM_SOCKETS QP's
-	{
-		struct ibv_qp_attr attr;
-		struct ibv_qp_init_attr init_attr = {
-			.send_cq = pp_cq(ctx),
-			.recv_cq = pp_cq(ctx),
-			.cap     = {
-				.max_send_wr  = 1,
-				.max_recv_wr  = rx_depth,
-				.max_send_sge = 1,
-				.max_recv_sge = 1
-			},
-			.qp_type = IBV_QPT_RC
-		};
+    
+    struct ibv_qp_attr attr;
+    struct ibv_qp_init_attr init_attr = {
+        .send_cq = pp_cq(ctx),
+        .recv_cq = pp_cq(ctx),
+        .cap     = {
+            .max_send_wr  = 1,
+            .max_recv_wr  = rx_depth,
+            .max_send_sge = 1,
+            .max_recv_sge = 1
+        },
+        .qp_type = IBV_QPT_RC
+    };
 
-		((*ctx).qp[i]) = ibv_create_qp(ctx->pd, &init_attr);////////////
-		if (!((*ctx).qp[i]))  {
-			fprintf(stderr, "Couldn't create QP\n");
-			goto clean_cq;
-		}
+    ((*ctx).qp) = ibv_create_qp(ctx->pd, &init_attr);////////////
+    if (!((*ctx).qp))  {
+        fprintf(stderr, "Couldn't create QP\n");
+        goto clean_cq;
+    }
 
-		ibv_query_qp(((*ctx).qp[i]), &attr, IBV_QP_CAP, &init_attr);
-		if (init_attr.cap.max_inline_data >= size) {
-			ctx->send_flags |= IBV_SEND_INLINE;
-		}
+    ibv_query_qp(((*ctx).qp), &attr, IBV_QP_CAP, &init_attr);
+    if (init_attr.cap.max_inline_data >= size) {
+        ctx->send_flags |= IBV_SEND_INLINE;
+    }
+
+
+
+    struct ibv_qp_attr attr2 = {
+        .qp_state        = IBV_QPS_INIT,
+        .pkey_index      = 0,
+        .port_num        = port,
+        .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
+    };
+
+    if (ibv_modify_qp((*ctx).qp, &attr2,
+              IBV_QP_STATE              |
+              IBV_QP_PKEY_INDEX         |
+              IBV_QP_PORT               |
+              IBV_QP_ACCESS_FLAGS)) {
+        fprintf(stderr, "Failed to modify QP to INIT\n");
+        goto clean_qp;
+    }
 	
-
-	
-		struct ibv_qp_attr attr2 = {
-			.qp_state        = IBV_QPS_INIT,
-			.pkey_index      = 0,
-			.port_num        = port,
-			.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
-		};
-
-		if (ibv_modify_qp((*ctx).qp[i], &attr2,
-				  IBV_QP_STATE              |
-				  IBV_QP_PKEY_INDEX         |
-				  IBV_QP_PORT               |
-				  IBV_QP_ACCESS_FLAGS)) {
-			fprintf(stderr, "Failed to modify QP to INIT\n");
-			goto clean_qp;
-		}
-	}
 
 	return ctx;
 
 clean_qp:
-    for (int k = 0 ; k < NUM_SOCKETS; k = k+1)
-        ibv_destroy_qp((*ctx).qp[k]);
+    
+        ibv_destroy_qp((*ctx).qp);
 
 clean_cq:
 	ibv_destroy_cq(pp_cq(ctx));
@@ -496,11 +493,11 @@ clean_ctx:
 
 static int pp_close_ctx(struct pingpong_context *ctx)
 {
-    for (int k = 0 ; k < NUM_SOCKETS; k = k+1)
-        if ( ibv_destroy_qp((*ctx).qp[k])) {
-            fprintf(stderr, "Couldn't destroy QP\n");
-            return 1;
-        }
+   
+    if ( ibv_destroy_qp((*ctx).qp)) {
+        fprintf(stderr, "Couldn't destroy QP\n");
+        return 1;
+    }
 
 	if (ibv_destroy_cq(pp_cq(ctx))) {
 		fprintf(stderr, "Couldn't destroy CQ\n");
@@ -563,8 +560,8 @@ static int pp_post_recv(struct pingpong_context *ctx, int n)
 
 static int pp_post_send(struct pingpong_context *ctx, enum ibv_wr_opcode opcode, unsigned size, const char *local_ptr,uint32_t lkey, uint64_t remote_ptr, uint32_t remote_key)
 {
-    printf("lkey is %d vs %d\nlocal ptr is %d vs %d\n",(lkey ? lkey : ctx->mr->lkey),ctx->mr->lkey,(local_ptr ? local_ptr : ctx->buf),ctx->buf);
-	printf("server data in client: rkey = %d \n remote_addr = %d\n",remote_key,remote_ptr);
+    //printf("lkey is %d vs %d\nlocal ptr is %d vs %d\n",(lkey ? lkey : ctx->mr->lkey),ctx->mr->lkey,(local_ptr ? local_ptr : ctx->buf),ctx->buf);
+	//printf("server data in client: rkey = %d \n remote_addr = %d\n",remote_key,remote_ptr);
     struct ibv_sge list = {
 		.addr	= (uintptr_t) (local_ptr ? local_ptr : ctx->buf),
 		.length = size,
@@ -617,7 +614,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
             struct packet* gotten_packet;
 			switch ((int) wc[i].wr_id) {
 			case PINGPONG_SEND_WRID:
-                printf("msg sent successful\n");
+                //printf("msg sent successful\n");
                 scnt = scnt + 1;
 				break;
 
@@ -628,15 +625,15 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                 {
                     *answerBuffer = malloc(gotten_packet->eager_get_response.valueLen * sizeof(char));
                     memcpy(*answerBuffer,gotten_packet->eager_get_response.value,gotten_packet->eager_get_response.valueLen);
-                    printf("Answer buffer:\n %s\n",*answerBuffer);
+                    //printf("Answer buffer:\n %s\n",*answerBuffer);
                 }
                 else if(gotten_packet->type == EAGER_SET_RESPONSE)
                 {
-                    printf("set is done on server, continuing\n");
+                    //printf("set is done on server, continuing\n");
                 }
                 else if(gotten_packet->type == RENDEZVOUS_GET_RESPONSE)
                 {
-                    printf("gotten rndv get response\n");
+                    //printf("gotten rndv get response\n");
                     *answerBuffer = malloc(gotten_packet->rndv_get_response.valueLen * sizeof(char));
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd, *answerBuffer,
@@ -648,25 +645,25 @@ int pp_wait_completions(struct kv_handle *handle, int iters,char ** answerBuffer
                             gotten_packet->rndv_get_response.remote_address
                             ,gotten_packet->rndv_get_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
-                    printf("RDMA recieved\n");
+                    //printf("RDMA recieved\n");
                 }
                 else if(gotten_packet->type == RENDEZVOUS_SET_RESPONSE)
                 {
-                    printf("got rend set response@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+                    //printf("got rend set response@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
                     //printf("will set string: %s\n",valueToSet);
                     //register memory at value in size valueLen, and sendit to packet data
                     handle->registeredMR[handle->numRegistered] = ibv_reg_mr(ctx->pd,(void*) &(*valueToSet),
                                                     valueLen, IBV_ACCESS_LOCAL_WRITE |
                                                     IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ); 
                     handle->numRegistered = handle->numRegistered + 1;
-                    printf("mem registered, valueLen = %d\n",valueLen);
+                    //printf("mem registered, valueLen = %d\n",valueLen);
                     pp_post_send(handle->ctx,IBV_WR_RDMA_WRITE,valueLen,
                             handle->registeredMR[handle->numRegistered-1]->addr,
                             handle->registeredMR[handle->numRegistered-1]->lkey,
                             gotten_packet->rndv_set_response.remote_address
                             ,gotten_packet->rndv_set_response.rkey);
                     pp_wait_completions(handle, 1,NULL,NULL,0);//wait for comp
-                    printf("RDMA sent\n");//handle->registeredMR[handle->numRegistered-1]->addr);
+                    //printf("RDMA sent\n");//handle->registeredMR[handle->numRegistered-1]->addr);
                 }
                 pp_post_recv(ctx, 1);
                 rcnt = rcnt + 1;
@@ -697,17 +694,17 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     if (packet_size < (EAGER_PROTOCOL_LIMIT)) {
         /* Eager protocol - exercise part 1 */
         set_packet->type = EAGER_SET_REQUEST;
-        printf("sending eager.\n key = %s\n value = %s\n",key,value);
+        //printf("sending eager.\n key = %s\n value = %s\n",key,value);
         set_packet->eager_set_request.keyLen = strlen(key) + 1;
         set_packet->eager_set_request.valueLen = strlen(value) + 1;
         memcpy(set_packet->eager_set_request.key_and_value,key,strlen(key) + 1);
         memcpy(&(set_packet->eager_set_request.key_and_value[strlen(key) + 1]),value,strlen(value) + 1);
         /* TODO (4LOC): fill in the rest of the set_packet */
-        printf("send %s\n",set_packet->eager_set_request.key_and_value);
-        printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
-        printf("packet type is %d\n",set_packet->type);
+        //printf("send %s\n",set_packet->eager_set_request.key_and_value);
+        //printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
+        //printf("packet type is %d\n",set_packet->type);
         pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL, 0, 0, 0); /* Sends the packet to the server */
-        printf("packet sent\n");
+        //printf("packet sent\n");
         return pp_wait_completions(kv_handle, 2,NULL,NULL,0); /* await EAGER_SET_REQUEST completion and EAGER_SET_RESPONSE */
     }
 
@@ -716,7 +713,7 @@ int kv_set(struct kv_handle *kv_handle, const char *key, const char *value)
     //memory then use RDMA_WRITE
     set_packet->type = RENDEZVOUS_SET_REQUEST;
     packet_size = sizeof(struct packet);
-    printf("randevo\n");
+    //printf("randevo\n");
     set_packet->rndv_set_request.keyLen = strlen(key) + 1;
     set_packet->rndv_set_request.valueLen = strlen(value) + 1;
     memcpy(set_packet->rndv_set_request.key,key,strlen(key) + 1);
@@ -740,19 +737,19 @@ int kv_get(struct kv_handle *kv_handle, const char *key, char **value)
 
     unsigned packet_size = strlen(key) + sizeof(struct packet);
     
-    printf("type is %d\n",EAGER_GET_REQUEST);
+    //printf("type is %d\n",EAGER_GET_REQUEST);
     set_packet->type = EAGER_GET_REQUEST;
-    printf("sending eager get.\n key = %s\n",key);
+    //printf("sending eager get.\n key = %s\n",key);
     set_packet->eager_get_request.keyLen = strlen(key) + 1;
     
     memcpy(set_packet->eager_get_request.key,key,strlen(key) + 1);
 
     /* TODO (4LOC): fill in the rest of the get_packet */
-    printf("send %s\n",set_packet->eager_get_request.key);
-    printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
-    printf("packet type is %d\n",set_packet->type);
+    //printf("send %s\n",set_packet->eager_get_request.key);
+    //printf("packet size is %d.\nchar after packet size = %c\nlast char in msg is = %c\n",packet_size,set_packet->eager_set_request.key_and_value[packet_size-sizeof(struct packet)],set_packet->eager_set_request.key_and_value[packet_size-1-sizeof(struct packet)]);
+    //printf("packet type is %d\n",set_packet->type);
     pp_post_send(ctx, IBV_WR_SEND, packet_size, NULL,0, 0, 0); /* Sends the packet to the server */
-    printf("packet sent\n");
+    //printf("packet sent\n");
     return pp_wait_completions(kv_handle, 2,value,NULL,0); /* await EAGER_GET_REQUEST completion, and EAGER_GET_RESPONSE answer */
     
 }
@@ -790,28 +787,20 @@ int main(int argc, char *argv[])
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
 	struct pingpong_context *context;
-	struct pingpong_dest    my_dest[NUM_SOCKETS];
+	struct pingpong_dest    my_dest;
 	struct pingpong_dest    *rem_dest;
 	struct timeval           timer;
 	char                    *ib_devname = NULL;
 	//char                    *servername = NULL;
 	unsigned int             port = 18515;
 	int                      ib_port = 1;
-	int             messageSize[NUM_SOCKETS];
-    int             numMessages[NUM_SOCKETS];
     page_size = sysconf(_SC_PAGESIZE); //checks the page size used by the system
-    for (int i=0 ;i< NUM_SOCKETS; i = i+1)
-    {
-        messageSize[i] = page_size; //start with page_size messages
-        numMessages[i] = 100000; //start with 10000 iters per size of message
-    }
+
 	enum ibv_mtu		 mtu = IBV_MTU_1024;
 	unsigned int             rx_depth = 50;
 	
 	int                      use_event = 0;
-	int                      routs[NUM_SOCKETS];
-	//int                      rcnt[NUM_SOCKETS];
-    int                      sendCount[NUM_SOCKETS];
+	int                      routs;
 	int                      num_cq_events;//only one completion queue
 	int                      sl = 0;
 	int			 gidx = -1;
@@ -856,49 +845,46 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Couldn't get port info\n");
             return 1;
         }
-    for ( int k = 0; k < NUM_SOCKETS ; k = k+1)
-    {
-        //Prepare to recieve messages. fill the recieve request queue of QP k
-        routs[k] = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
-            if (routs[k] < context->rx_depth) {
-                fprintf(stderr, "Couldn't post receive (%d)\n", routs[k]);
-                return 1;
-            }
-        //set my_dest for every QP, getting ready to connect them.
-        my_dest[k].lid = context->portinfo.lid; //assigns lid to my dest
-        if (context->portinfo.link_layer != IBV_LINK_LAYER_ETHERNET &&
-                                !my_dest[k].lid) {
-            fprintf(stderr, "Couldn't get local LID\n");
+    
+    //Prepare to recieve messages. fill the recieve request queue of QP k
+    routs = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
+        if (routs < context->rx_depth) {
+            fprintf(stderr, "Couldn't post receive (%d)\n", routs);
             return 1;
         }
-        //set the gid to 0, we are in the same subnet.
-        memset(&my_dest[k].gid, 0, sizeof my_dest[k].gid); //zero the gid, we send in the same subnet
-        my_dest[k].qpn = ((*context).qp[k])->qp_num; //gets the qp number
-        my_dest[k].psn = lrand48() & 0xffffff; //randomizes the packet serial number
-        inet_ntop(AF_INET6, &my_dest[k].gid, gid, sizeof gid); //changes gid to text form
-        //printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-         //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
+    //set my_dest for every QP, getting ready to connect them.
+    my_dest.lid = context->portinfo.lid; //assigns lid to my dest
+    if (context->portinfo.link_layer != IBV_LINK_LAYER_ETHERNET &&
+                            !my_dest.lid) {
+        fprintf(stderr, "Couldn't get local LID\n");
+        return 1;
     }
+    //set the gid to 0, we are in the same subnet.
+    memset(&my_dest.gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
+    my_dest.qpn = ((*context).qp[k])->qp_num; //gets the qp number
+    my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
+    inet_ntop(AF_INET6, &my_dest.gid, gid, sizeof gid); //changes gid to text form
+    //printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
+     //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
+    
     //Get the remote dest for my QPs
     rem_dest = pp_client_exch_dest(servername, port, my_dest); //if youre a client - exchange data with server
     if (!rem_dest)
             return 1; 
     
 
-    for(int k = 0 ; k < NUM_SOCKETS; k = k + 1)
-    {
-      inet_ntop(AF_INET6, &rem_dest[k].gid, gid, sizeof gid);
+    
+      inet_ntop(AF_INET6, &rem_dest.gid, gid, sizeof gid);
       //printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
       //       rem_dest[k].lid, rem_dest[k].qpn, rem_dest[k].psn, gid);
-    }      
+          
     //now connect all the QPs to the server
-    for( int k = 0 ; k < NUM_SOCKETS; k = k+1)
-    {
-        if (pp_connect_ctx(context, ib_port, my_dest[k].psn, mtu, sl, &rem_dest[k],
-                        gidx,k))
-                return 1; //connect to the server
+    
+    if (pp_connect_ctx(context, ib_port, my_dest.psn, mtu, sl, &rem_dest,
+                    gidx,k))
+            return 1; //connect to the server
 
-    }
+    
    
     //Do client work
     struct kv_handle * handle = malloc(sizeof(struct kv_handle));
@@ -909,10 +895,7 @@ int main(int argc, char *argv[])
     assert(100 < MAX_TEST_SIZE);
     memset(send_buffer, 'a', 100);
     assert(0 == set(handle, "1", send_buffer));
-    printf("set success\n");
-    //sleep(1);
     assert(0 == get(handle, "1", &recv_buffer));
-    printf("recv buffer: %s\n",recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
 
@@ -921,31 +904,23 @@ int main(int argc, char *argv[])
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     memset(send_buffer, 'b', 100);
-    //sleep(1);
     assert(0 == set(handle, "1", send_buffer));
     memset(send_buffer, 'c', 100);
-    //sleep(1);
     assert(0 == set(handle, "22", send_buffer));
     memset(send_buffer, 'b', 100);
-    //sleep(1);
     assert(0 == get(handle, "1", &recv_buffer));
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
 
     /* Test large size */
-    //recv_buffer = (char*) malloc(MAX_TEST_SIZE);
     memset(send_buffer, 'x', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "1", send_buffer));
-    //memset(send_buffer, 'y', MAX_TEST_SIZE - 1);
     assert(0 == set(handle, "333", send_buffer));
     assert(0 == get(handle, "1", &recv_buffer));
-    //printf("buffer len: \nsend: %d\nrecv: %d\n",strlen(send_buffer),strlen(recv_buffer));
-    //printf("send: %s\nrecv: %s\n",send_buffer,recv_buffer);
     assert(0 == strcmp(send_buffer, recv_buffer));
     release(recv_buffer);
     
-    ///////////////////////////
-    //sleep(10);
+    
     printf("client success@#!@@\n");
     
     ibv_free_device_list(dev_list);
