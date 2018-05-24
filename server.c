@@ -502,7 +502,7 @@ clean_dm:
 		//ibv_free_dm(ctx->dm);
 
 clean_pd:
-	//ibv_dealloc_pd(ctx->pd);
+	ibv_dealloc_pd(ctx->pd);
 
 clean_comp_channel:
 	if (ctx->channel)
@@ -535,7 +535,6 @@ static int pp_close_ctx(struct pingpong_context *ctx)
 	}
 
 	if (ibv_dereg_mr(ctx->mr)) {
-		fprintf(stderr, "Couldn't deregister MR\n");
 		return 1;
 	}
 
