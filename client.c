@@ -890,7 +890,7 @@ int kv_close(struct kv_handle *kv_handle)
     {
         void * memory = kv_handle->registeredMR[i]->addr;
         ibv_dereg_mr(kv_handle->registeredMR[i]);
-        free(memory);
+        //free(memory);
     }
     
     return pp_close_ctx(kv_handle->ctx);
