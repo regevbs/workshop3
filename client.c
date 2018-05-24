@@ -881,8 +881,8 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
     //Do client work
     
     kv_handle->ctx = context;
-    ibv_free_device_list(dev_list);
-    free(rem_dest);
+    //ibv_free_device_list(dev_list);
+    //free(rem_dest);
     
     return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
 }
