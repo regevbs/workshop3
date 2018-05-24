@@ -775,7 +775,7 @@ int kv_close(struct kv_handle *kv_handle)
 
 
 
-void terminateServer(kv_handle * handle)
+void terminateServer(struct kv_handle * handle)
 {
     struct pingpong_context *ctx = handle->ctx;
     struct packet *set_packet = (struct packet*)ctx->buf;
