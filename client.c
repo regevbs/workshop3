@@ -837,7 +837,7 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
             fprintf(stderr, "Couldn't get port info\n");
             return 1;
         }
-    
+    printf("got here0\n");
     //Prepare to recieve messages. fill the recieve request queue of QP k
     routs = pp_post_recv(context, context->rx_depth); //post rx_depth recieve requests
         if (routs < context->rx_depth) {
@@ -852,6 +852,7 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
         return 1;
     }
     //set the gid to 0, we are in the same subnet.
+    printf("got here1\n");
     memset(&my_dest.gid, 0, sizeof my_dest.gid); //zero the gid, we send in the same subnet
     my_dest.qpn = ((*context).qp)->qp_num; //gets the qp number
     my_dest.psn = lrand48() & 0xffffff; //randomizes the packet serial number
@@ -860,7 +861,7 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
      //      my_dest[k].lid, my_dest[k].qpn, my_dest[k].psn, gid);
     
     //Get the remote dest for my QPs
-    printf("got here\n");
+    printf("got here2\n");
     rem_dest = pp_client_exch_dest(servername, port, &my_dest); //if youre a client - exchange data with server
     if (!rem_dest)
             return 1; 
