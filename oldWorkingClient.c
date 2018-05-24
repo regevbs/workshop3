@@ -788,9 +788,19 @@ void terminateServer(struct kv_handle * handle)
 //////////////////////
 int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 {
+    
+    
+    return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
+}
+
+
+int main(int argc, char *argv[])
+{
+    struct kv_server_address * server;
+    struct kv_handle * handle = malloc(sizeof(struct kv_handle));
     struct ibv_device      **dev_list;
 	struct ibv_device	*ib_dev;
-	struct pingpong_context *context = malloc(sizeof(struct pingpong_context));
+	struct pingpong_context *context;
 	struct pingpong_dest    my_dest;
 	struct pingpong_dest    *rem_dest;
 	struct timeval           timer;
@@ -811,12 +821,26 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
 	//struct ts_params	 ts;
 
 	srand48(getpid() * time(NULL));
+
+    //////////////
     
-    portNum = (int)server->port;
+    //////////////
+    //get input for the server ip and port
+    //int portNum;
+    int numArgs = 3;
+    char* usageMessage = "usage %s Server IP port\n";
+	if (argc < numArgs) {
+       fprintf(stderr,usageMessage, argv[0]);
+       exit(0);
+    }
+    portNum = atoi(argv[numArgs - 1]);
     port = portNum;
-    servername = server->servername;
+    servername = strdupa(argv[1]);
+    server->servername = servername;
+    server->port = (short) port;
     
-      //get our beloved device
+    kv_open(server,handle);
+    //get our beloved device
     dev_list = ibv_get_device_list(NULL); //get devices available to this machine
 	if (!dev_list) {
 		perror("Failed to get IB devices list");
@@ -881,37 +905,6 @@ int kv_open(struct kv_server_address *server, struct kv_handle *kv_handle)
     //Do client work
     
     handle->ctx = context;
-    
-    
-    return 0;//orig_main(server, EAGER_PROTOCOL_LIMIT, g_argc, g_argv, &kv_handle->ctx);
-}
-
-
-int main(int argc, char *argv[])
-{
-    struct kv_server_address * server;
-    struct kv_handle * handle = malloc(sizeof(struct kv_handle));
-    
-
-    //////////////
-    
-    //////////////
-    //get input for the server ip and port
-    //int portNum;
-    int numArgs = 3;
-    char* usageMessage = "usage %s Server IP port\n";
-	if (argc < numArgs) {
-       fprintf(stderr,usageMessage, argv[0]);
-       exit(0);
-    }
-    portNum = atoi(argv[numArgs - 1]);
-    port = portNum;
-    servername = strdupa(argv[1]);
-    server->servername = servername;
-    server->port = (short) port;
-    
-    kv_open(server,handle);
-  
     char send_buffer[MAX_TEST_SIZE] = {0};
     char *recv_buffer;
     /* Test small size */
