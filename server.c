@@ -617,7 +617,7 @@ void kv_release(char *value)
 {
     /* TODO (2LOC): free value */
 }
-void handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
+int handle_server_packets_only(struct kv_handle *handle, struct packet *packet)
 {
 	unsigned response_size = 0;
     struct pingpong_context *ctx = handle->ctx;
@@ -897,7 +897,7 @@ int pp_wait_completions(struct kv_handle *handle, int iters)
                 scnt = scnt + 1;
 				break;
 
-			case PINGPONG_RECV_WRID:
+			case PINGPONG_RECV_WRID:;
                 int retVal;
 				retVal = handle_server_packets_only(handle, (struct packet*)ctx->buf);
                 if(retVal == -10)
